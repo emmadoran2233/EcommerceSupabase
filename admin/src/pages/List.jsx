@@ -1,7 +1,8 @@
-import axios from 'axios'
+//import axios from 'axios'
 import React, { useEffect, useState } from 'react'
-import { backendUrl, currency } from '../App'
+import { currency } from '../App'
 import { toast } from 'react-toastify'
+import { supabase } from '../supabaseClient'
 
 const List = ({ token }) => {
 
@@ -9,38 +10,35 @@ const List = ({ token }) => {
 
   const fetchList = async () => {
     try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-      const response = await axios.get(backendUrl + '/api/product/list')
-      if (response.data.success) {
-        setList(response.data.products.reverse());
-      }
-      else {
-        toast.error(response.data.message)
-      }
-
+      if (error) throw error;
+      setList(data);
     } catch (error) {
-      console.log(error)
-      toast.error(error.message)
+      console.error("Fetch list error:", error);
+      toast.error(error.message);
     }
-  }
+  };
 
   const removeProduct = async (id) => {
     try {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", id);
 
-      const response = await axios.post(backendUrl + '/api/product/remove', { id }, { headers: { token } })
+      if (error) throw error;
 
-      if (response.data.success) {
-        toast.success(response.data.message)
-        await fetchList();
-      } else {
-        toast.error(response.data.message)
-      }
-
+      toast.success("Product removed successfully!");
+      await fetchList(); // refresh list
     } catch (error) {
-      console.log(error)
-      toast.error(error.message)
+      console.error("Remove error:", error);
+      toast.error(error.message);
     }
-  }
+  };
 
   useEffect(() => {
     fetchList()
@@ -66,11 +64,11 @@ const List = ({ token }) => {
         {
           list.map((item, index) => (
             <div className='grid grid-cols-[1fr_3fr_1fr] md:grid-cols-[1fr_3fr_1fr_1fr_1fr] items-center gap-2 py-1 px-2 border text-sm' key={index}>
-              <img className='w-12' src={item.image[0]} alt="" />
+              <img className='w-12' src={item.images && item.images[0]} alt="" />
               <p>{item.name}</p>
               <p>{item.category}</p>
               <p>{currency}{item.price}</p>
-              <p onClick={()=>removeProduct(item._id)} className='text-right md:text-center cursor-pointer text-lg'>X</p>
+              <p onClick={()=>removeProduct(item.id)} className='text-right md:text-center cursor-pointer text-lg'>X</p>
             </div>
           ))
         }
