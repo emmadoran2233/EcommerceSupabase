@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import {assets} from '../assets/assets'
-import axios from 'axios'
-import { backendUrl } from '../App'
+//import axios from 'axios'
+//import { backendUrl } from '../App'
 import { toast } from 'react-toastify'
+import { supabase } from '../supabaseClient'
 
 const Add = ({token}) => {
 
@@ -24,36 +25,82 @@ const Add = ({token}) => {
 
     try {
       
-      const formData = new FormData()
+      // const formData = new FormData()
 
-      formData.append("name",name)
-      formData.append("description",description)
-      formData.append("price",price)
-      formData.append("category",category)
-      formData.append("subCategory",subCategory)
-      formData.append("bestseller",bestseller)
-      formData.append("sizes",JSON.stringify(sizes))
+      // formData.append("name",name)
+      // formData.append("description",description)
+      // formData.append("price",price)
+      // formData.append("category",category)
+      // formData.append("subCategory",subCategory)
+      // formData.append("bestseller",bestseller)
+      // formData.append("sizes",JSON.stringify(sizes))
 
-      image1 && formData.append("image1",image1)
-      image2 && formData.append("image2",image2)
-      image3 && formData.append("image3",image3)
-      image4 && formData.append("image4",image4)
+      // image1 && formData.append("image1",image1)
+      // image2 && formData.append("image2",image2)
+      // image3 && formData.append("image3",image3)
+      // image4 && formData.append("image4",image4)
 
-      const response = await axios.post(backendUrl + "/api/product/add",formData,{headers:{token}})
+      // const response = await axios.post(backendUrl + "/api/product/add",formData,{headers:{token}})
 
-      if (response.data.success) {
-        toast.success(response.data.message)
-        setName('')
-        setDescription('')
-        setImage1(false)
-        setImage2(false)
-        setImage3(false)
-        setImage4(false)
-        setPrice('')
-      } else {
-        toast.error(response.data.message)
+      // if (response.data.success) {
+      //   toast.success(response.data.message)
+      //   setName('')
+      //   setDescription('')
+      //   setImage1(false)
+      //   setImage2(false)
+      //   setImage3(false)
+      //   setImage4(false)
+      //   setPrice('')
+      // } else {
+      //   toast.error(response.data.message)
+      // }
+      
+      const imageUrls = [];
+      const images = [image1, image2, image3, image4];
+      for (let img of images) {
+        if (img) {
+          const fileName = `${Date.now()}_${img.name}`;
+          const { error: uploadError } = await supabase
+            .storage
+            .from("product-images")
+            .upload(fileName, img);
+
+          if (uploadError) throw uploadError;
+
+          const { data: publicUrl } = supabase
+            .storage
+            .from("product-images")
+            .getPublicUrl(fileName);
+
+          imageUrls.push(publicUrl.publicUrl);
+        }
       }
 
+      const { error: insertError } = await supabase.from("products").insert([
+        {
+          name,
+          description,
+          price,
+          category,
+          sub_category: subCategory,
+          bestseller,
+          sizes,
+          images: imageUrls,
+        },
+      ]);
+      if (insertError) throw insertError;
+      toast.success("Product added successfully!");
+      setName(""); 
+      setDescription(""); 
+      setPrice("");
+      setCategory("Men"); 
+      setSubCategory("Topwear");
+      setBestseller(false); 
+      setSizes([]);
+      setImage1(false); 
+      setImage2(false); 
+      setImage3(false); 
+      setImage4(false);
     } catch (error) {
       console.log(error);
       toast.error(error.message)
