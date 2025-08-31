@@ -3,6 +3,8 @@ import { supabase } from '../supabaseClient'
 import { currency } from '../App'
 import { toast } from 'react-toastify'
 import { assets } from '../assets/assets'
+import { currency } from '../App'
+import { supabase } from '../supabase'   // by supabase-js
 
 const Orders = ({ token, user }) => {
   const [orders, setOrders] = useState([])
