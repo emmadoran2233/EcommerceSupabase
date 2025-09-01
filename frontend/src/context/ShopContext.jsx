@@ -1,7 +1,8 @@
 import { createContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import axios from 'axios'
+//import axios from 'axios'
+import { supabase } from "../supabaseClient"
 
 export const ShopContext = createContext();
 
@@ -19,123 +20,121 @@ const ShopContextProvider = (props) => {
 
 
     const addToCart = async (itemId, size) => {
-
         if (!size) {
-            toast.error('Select Product Size');
-            return;
+        toast.error("Select Product Size");
+        return;
         }
 
         let cartData = structuredClone(cartItems);
 
         if (cartData[itemId]) {
-            if (cartData[itemId][size]) {
-                cartData[itemId][size] += 1;
-            }
-            else {
-                cartData[itemId][size] = 1;
-            }
+        cartData[itemId][size] = (cartData[itemId][size] || 0) + 1;
+        } else {
+        cartData[itemId] = { [size]: 1 };
         }
-        else {
-            cartData[itemId] = {};
-            cartData[itemId][size] = 1;
-        }
+
         setCartItems(cartData);
 
+        try {
         if (token) {
-            try {
+            const { error } = await supabase
+            .from("carts")
+            .update({ items: cartData, updated_at: new Date() })
+            .eq("user_id", token);
 
-                await axios.post(backendUrl + '/api/cart/add', { itemId, size }, { headers: { token } })
-
-            } catch (error) {
-                console.log(error)
-                toast.error(error.message)
-            }
+            if (error) throw error;
         }
-
-    }
+        } catch (err) {
+        toast.error("Failed to update cart: " + err.message);
+        }
+    };
 
     const getCartCount = () => {
         let totalCount = 0;
-        for (const items in cartItems) {
-            for (const item in cartItems[items]) {
-                try {
-                    if (cartItems[items][item] > 0) {
-                        totalCount += cartItems[items][item];
-                    }
-                } catch (error) {
-
-                }
-            }
+        for (const productId in cartItems) {
+        for (const size in cartItems[productId]) {
+            const qty = cartItems[productId][size];
+            if (qty > 0) totalCount += qty;
+        }
         }
         return totalCount;
-    }
+    };
 
     const updateQuantity = async (itemId, size, quantity) => {
-
         let cartData = structuredClone(cartItems);
-
+        if (!cartData[itemId]) cartData[itemId] = {};
         cartData[itemId][size] = quantity;
 
-        setCartItems(cartData)
+        setCartItems(cartData);
 
+        try {
         if (token) {
-            try {
+            const { error } = await supabase
+            .from("carts")
+            .update({ items: cartData, updated_at: new Date() })
+            .eq("user_id", token);
 
-                await axios.post(backendUrl + '/api/cart/update', { itemId, size, quantity }, { headers: { token } })
-
-            } catch (error) {
-                console.log(error)
-                toast.error(error.message)
-            }
+            if (error) throw error;
         }
-
-    }
+        } catch (err) {
+        toast.error("Failed to update cart: " + err.message);
+        }
+    };
 
     const getCartAmount = () => {
         let totalAmount = 0;
-        for (const items in cartItems) {
-            let itemInfo = products.find((product) => product._id === items);
-            for (const item in cartItems[items]) {
-                try {
-                    if (cartItems[items][item] > 0) {
-                        totalAmount += itemInfo.price * cartItems[items][item];
-                    }
-                } catch (error) {
+        for (const productId in cartItems) {
+        const itemInfo = products.find(
+            (p) => String(p.id) === String(productId)
+        );
+        if (!itemInfo) continue;
 
-                }
+        for (const size in cartItems[productId]) {
+            const qty = cartItems[productId][size];
+            if (qty > 0) {
+            totalAmount += itemInfo.price * qty;
             }
         }
+        }
         return totalAmount;
-    }
+    };
+
+    const getUserCart = async (userId) => {
+        try {
+        const { data, error } = await supabase
+            .from("carts")
+            .select("items")
+            .eq("user_id", userId)
+            .single();
+
+        if (error) {
+            toast.error(error.message);
+        } else {
+            setCartItems(data?.items || {});
+        }
+        } catch (error) {
+        toast.error(error.message);
+        }
+    };
 
     const getProductsData = async () => {
         try {
+            const { data, error } = await supabase
+            .from("products")
+            .select("*")
+            .order("created_at", { ascending: false })
 
-            const response = await axios.get(backendUrl + '/api/product/list')
-            if (response.data.success) {
-                setProducts(response.data.products.reverse())
+            if (error) {
+            toast.error(error.message)
             } else {
-                toast.error(response.data.message)
-            }
-
-        } catch (error) {
-            console.log(error)
-            toast.error(error.message)
-        }
-    }
-
-    const getUserCart = async ( token ) => {
-        try {
-            
-            const response = await axios.post(backendUrl + '/api/cart/get',{},{headers:{token}})
-            if (response.data.success) {
-                setCartItems(response.data.cartData)
+            setProducts(data)
             }
         } catch (error) {
             console.log(error)
             toast.error(error.message)
         }
     }
+
 
     useEffect(() => {
         getProductsData()

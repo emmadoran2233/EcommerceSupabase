@@ -1,8 +1,9 @@
 import React from 'react'
 import { useEffect } from 'react'
 import { useState } from 'react'
-import axios from 'axios'
-import { backendUrl, currency } from '../App'
+//import axios from 'axios'
+import { supabase } from '../supabaseClient'
+import { currency } from '../App'
 import { toast } from 'react-toastify'
 import { assets } from '../assets/assets'
 
@@ -17,30 +18,36 @@ const Orders = ({ token }) => {
     }
 
     try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
 
-      const response = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } })
-      if (response.data.success) {
-        setOrders(response.data.orders.reverse())
+      if (error) {
+        toast.error(error.message)
       } else {
-        toast.error(response.data.message)
+        setOrders(data)
       }
-
     } catch (error) {
       toast.error(error.message)
     }
-
-
   }
 
   const statusHandler = async ( event, orderId ) => {
     try {
-      const response = await axios.post(backendUrl + '/api/order/status' , {orderId, status:event.target.value}, { headers: {token}})
-      if (response.data.success) {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: event.target.value })
+        .eq('id', orderId)
+
+      if (error) {
+        toast.error(error.message)
+      } else {
         await fetchAllOrders()
       }
     } catch (error) {
-      console.log(error)
-      toast.error(response.data.message)
+      console.error(error)
+      toast.error(error.message)
     }
   }
 
@@ -81,7 +88,7 @@ const Orders = ({ token }) => {
                 <p>Date : {new Date(order.date).toLocaleDateString()}</p>
               </div>
               <p className='text-sm sm:text-[15px]'>{currency}{order.amount}</p>
-              <select onChange={(event)=>statusHandler(event,order._id)} value={order.status} className='p-2 font-semibold'>
+              <select onChange={(event)=>statusHandler(event,order.id)} value={order.status} className='p-2 font-semibold'>
                 <option value="Order Placed">Order Placed</option>
                 <option value="Packing">Packing</option>
                 <option value="Shipped">Shipped</option>
