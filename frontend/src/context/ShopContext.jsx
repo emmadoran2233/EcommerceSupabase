@@ -15,7 +15,8 @@ const ShopContextProvider = (props) => {
     const [showSearch, setShowSearch] = useState(false);
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
-    const [token, setToken] = useState('')
+    const [token, setToken] = useState('');
+    const [userId, setUserId] = useState(""); 
     const navigate = useNavigate();
 
 
@@ -36,11 +37,11 @@ const ShopContextProvider = (props) => {
         setCartItems(cartData);
 
         try {
-        if (token) {
+        if (userId) {
             const { error } = await supabase
             .from("carts")
             .update({ items: cartData, updated_at: new Date() })
-            .eq("user_id", token);
+            .eq("user_id", userId);
 
             if (error) throw error;
         }
@@ -68,11 +69,11 @@ const ShopContextProvider = (props) => {
         setCartItems(cartData);
 
         try {
-        if (token) {
+        if (userId) {
             const { error } = await supabase
             .from("carts")
             .update({ items: cartData, updated_at: new Date() })
-            .eq("user_id", token);
+            .eq("user_id", userId);
 
             if (error) throw error;
         }
@@ -141,14 +142,16 @@ const ShopContextProvider = (props) => {
     }, [])
 
     useEffect(() => {
-        if (!token && localStorage.getItem('token')) {
-            setToken(localStorage.getItem('token'))
-            getUserCart(localStorage.getItem('token'))
+        // Load from localStorage on first mount
+        const storedToken = localStorage.getItem("token");
+        const storedUserId = localStorage.getItem("user_id"); // ✅ load userId
+
+        if (storedToken) setToken(storedToken);
+        if (storedUserId) {
+        setUserId(storedUserId);
+        getUserCart(storedUserId);
         }
-        if (token) {
-            getUserCart(token)
-        }
-    }, [token])
+    }, []);
 
     const value = {
         products, currency, delivery_fee,
