@@ -17,6 +17,7 @@ const ShopContextProvider = (props) => {
     const [products, setProducts] = useState([]);
     const [token, setToken] = useState('');
     const [userId, setUserId] = useState(""); 
+    const [user, setUser] = useState(null);
     const navigate = useNavigate();
 
 
@@ -144,7 +145,7 @@ const ShopContextProvider = (props) => {
     useEffect(() => {
         // Load from localStorage on first mount
         const storedToken = localStorage.getItem("token");
-        const storedUserId = localStorage.getItem("user_id"); // ✅ load userId
+        const storedUserId = localStorage.getItem("user_id");
 
         if (storedToken) setToken(storedToken);
         if (storedUserId) {
@@ -159,7 +160,7 @@ const ShopContextProvider = (props) => {
         cartItems, addToCart,setCartItems,
         getCartCount, updateQuantity,
         getCartAmount, navigate, backendUrl,
-        setToken, token
+        setToken, token, user
     }
 
     return (
