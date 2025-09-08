@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { ShopContext } from '../context/ShopContext';
-import axios from 'axios';
+//import axios from 'axios';
+import { supabase } from '../supabaseClient'
 import { toast } from 'react-toastify';
 
 const Login = () => {
@@ -13,36 +14,51 @@ const Login = () => {
   const [email,setEmail] = useState('')
 
   const onSubmitHandler = async (event) => {
-      event.preventDefault();
-      try {
-        if (currentState === 'Sign Up') {
-          
-          const response = await axios.post(backendUrl + '/api/user/register',{name,email,password})
-          if (response.data.success) {
-            setToken(response.data.token)
-            localStorage.setItem('token',response.data.token)
-          } else {
-            toast.error(response.data.message)
+    event.preventDefault();
+    try {
+      if (currentState === 'Sign Up') {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name } 
           }
+        });
 
-        } else {
-
-          const response = await axios.post(backendUrl + '/api/user/login', {email,password})
-          if (response.data.success) {
-            setToken(response.data.token)
-            localStorage.setItem('token',response.data.token)
-          } else {
-            toast.error(response.data.message)
-          }
-
+        if (error) {
+          toast.error(error.message);
+          return;
         }
 
+        setToken(data.session?.access_token || "");
+        localStorage.setItem('token', data.session?.access_token || "");
+        if (data.user) {
+          localStorage.setItem('user_id', data.user.id); 
+        }
+        toast.success("Account created successfully!");
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-      } catch (error) {
-        console.log(error)
-        toast.error(error.message)
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+
+        setToken(data.session?.access_token || "");
+        localStorage.setItem('token', data.session?.access_token || "");
+        if (data.user) {
+          localStorage.setItem('user_id', data.user.id); 
+        }
+        toast.success("Login successful!");
       }
-  }
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message);
+    }
+  };
 
   useEffect(()=>{
     if (token) {

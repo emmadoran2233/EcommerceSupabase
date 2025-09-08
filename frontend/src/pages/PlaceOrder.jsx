@@ -1,15 +1,16 @@
 import React, { useContext, useState } from 'react'
+import axios from 'axios';
 import Title from '../components/Title'
 import CartTotal from '../components/CartTotal'
 import { assets } from '../assets/assets'
 import { ShopContext } from '../context/ShopContext'
-import axios from 'axios'
+import { supabase } from "../supabaseClient"
 import { toast } from 'react-toastify'
 
 const PlaceOrder = () => {
 
     const [method, setMethod] = useState('cod');
-    const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products } = useContext(ShopContext);
+    const { navigate, cartItems, setCartItems, getCartAmount, delivery_fee, products, backendUrl } = useContext(ShopContext);
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -33,15 +34,15 @@ const PlaceOrder = () => {
             key: import.meta.env.VITE_RAZORPAY_KEY_ID,
             amount: order.amount,
             currency: order.currency,
-            name:'Order Payment',
-            description:'Order Payment',
+            name: 'Order Payment',
+            description: 'Order Payment',
             order_id: order.id,
             receipt: order.receipt,
             handler: async (response) => {
                 console.log(response)
                 try {
-                    
-                    const { data } = await axios.post(backendUrl + '/api/order/verifyRazorpay',response,{headers:{token}})
+
+                    const { data } = await axios.post(backendUrl + '/api/order/verifyRazorpay', response, { headers: { token } })
                     if (data.success) {
                         navigate('/orders')
                         setCartItems({})
@@ -65,7 +66,7 @@ const PlaceOrder = () => {
             for (const items in cartItems) {
                 for (const item in cartItems[items]) {
                     if (cartItems[items][item] > 0) {
-                        const itemInfo = structuredClone(products.find(product => product._id === items))
+                        const itemInfo = structuredClone(products.find(product => product.id === items))
                         if (itemInfo) {
                             itemInfo.size = item
                             itemInfo.quantity = cartItems[items][item]
@@ -78,36 +79,64 @@ const PlaceOrder = () => {
             let orderData = {
                 address: formData,
                 items: orderItems,
-                amount: getCartAmount() + delivery_fee
+                amount: getCartAmount() + delivery_fee,
+                paymentmethod: method,
+                payment: false,
+                status: "Order Placed",
+                date: new Date().toISOString()
             }
-            
+
 
             switch (method) {
 
                 // API Calls for COD
                 case 'cod':
-                    const response = await axios.post(backendUrl + '/api/order/place',orderData,{headers:{token}})
-                    if (response.data.success) {
+                    const { error } = await supabase.from("orders").insert([orderData])
+                    if (error) {
+                        toast.error(error.message)
+                    } else {
                         setCartItems({})
                         navigate('/orders')
-                    } else {
-                        toast.error(response.data.message)
+                        toast.success("Order placed successfully!")
                     }
+                    // const response = await axios.post(backendUrl + '/api/order/place',orderData,{headers:{token}})
+                    // if (response.data.success) {
+                    //     setCartItems({})
+                    //     navigate('/orders')
+                    // } else {
+                    //     toast.error(response.data.message)
+                    // }
                     break;
 
                 case 'stripe':
-                    const responseStripe = await axios.post(backendUrl + '/api/order/stripe',orderData,{headers:{token}})
-                    if (responseStripe.data.success) {
-                        const {session_url} = responseStripe.data
-                        window.location.replace(session_url)
-                    } else {
-                        toast.error(responseStripe.data.message)
+                    try {
+                        const responseStripe = await axios.post(
+                            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verifyStripe`,
+                            orderData,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                                    'Content-Type': 'application/json',
+                                },
+                            }
+                        );
+
+                        if (responseStripe.data.success) {
+                            const { session_url } = responseStripe.data;
+                            window.location.replace(session_url);
+                        } else {
+                            toast.error(responseStripe.data.message);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        toast.error("Stripe order failed");
                     }
                     break;
 
+
                 case 'razorpay':
 
-                    const responseRazorpay = await axios.post(backendUrl + '/api/order/razorpay', orderData, {headers:{token}})
+                    const responseRazorpay = await axios.post(backendUrl + '/api/order/razorpay', orderData, { headers: { token } })
                     if (responseRazorpay.data.success) {
                         initPay(responseRazorpay.data.order)
                     }
