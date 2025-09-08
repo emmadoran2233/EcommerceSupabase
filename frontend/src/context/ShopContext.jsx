@@ -106,7 +106,7 @@ const ShopContextProvider = (props) => {
             .from("carts")
             .select("items")
             .eq("user_id", userId)
-            .single();
+            .maybeSingle();
 
         if (error) {
             toast.error(error.message);
