@@ -1,10 +1,20 @@
 import React from 'react'
+import { supabase } from "../supabaseClient";
+import { toast } from "react-toastify";
 
 const NewsletterBox = () => {
 
-    const onSubmitHandler = (event) => {
-        event.preventDefault();
-    }
+    const onSubmitHandler = async (event) => {
+      event.preventDefault();
+      const email = event.target[0].value;
+      const { error } = await supabase.from("subscribers").insert([{ email }]);
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success("Subscribed successfully!");
+        event.target.reset();
+      }
+    };
 
   return (
     <div className=' text-center'>

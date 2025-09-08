@@ -20,13 +20,18 @@ const Verify = () => {
             if (!token) {
                 return null
             }
+
             const response = await axios.post(
-                'https://vhbgepmpesopzpmzmcjs.supabase.co/functions/v1/verifyStripe',
-                { success, orderId },
+                import.meta.env.VITE_SUPABASE_URL + '/functions/v1/verifyStripe',
+                { success, orderId, userId },
                 {
                     headers: {
-                        Authorization: `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json',},})
+                        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+
             if (response.data.success) {
                 setCartItems({})
                 navigate('/orders')
@@ -36,7 +41,9 @@ const Verify = () => {
 
         } catch (error) {
             console.log(error)
-            toast.error(error.message)}}
+            toast.error(error.message)
+        }
+    }
 
     useEffect(() => {
         verifyPayment()

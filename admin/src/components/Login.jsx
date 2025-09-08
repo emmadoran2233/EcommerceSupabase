@@ -1,28 +1,36 @@
-import axios from 'axios'
+import { supabase } from '../supabaseClient'
 import React, { useState } from 'react'
-import { backendUrl } from '../App'
+//import { backendUrl } from '../App'
 import { toast } from 'react-toastify'
 
 const Login = ({setToken}) => {
 
     const [email,setEmail] = useState('')
-    const [password,setPassword] = useState('')
+    const [password,setPassword] = useState('') //['admin@example.com', 'Asdfg12345']
 
     const onSubmitHandler = async (e) => {
+        e.preventDefault();
+
         try {
-            e.preventDefault();
-            const response = await axios.post(backendUrl + '/api/user/admin',{email,password})
-            if (response.data.success) {
-                setToken(response.data.token)
-            } else {
-                toast.error(response.data.message)
+            const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+            });
+
+            if (error) {
+            toast.error(error.message);
+            return;
             }
-             
+
+            // Save the session or access token if needed
+            setToken(data.session.access_token);
+
+            toast.success("Login successful!");
         } catch (error) {
-            console.log(error);
-            toast.error(error.message)
+            console.error(error);
+            toast.error(error.message);
         }
-    }
+        };
 
   return (
     <div className='min-h-screen flex items-center justify-center w-full'>
