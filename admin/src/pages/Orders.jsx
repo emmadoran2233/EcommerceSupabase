@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { assets } from '../assets/assets'
 import { currency } from '../App'
-import { supabase } from '../supabase'   // by supabase-js
+import { supabase } from '../supabaseClient'   // by supabase-js
 
 const Orders = () => {
   const [orders, setOrders] = useState([])
