@@ -12,10 +12,21 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
   try {
+    if (req.method === "OPTIONS") {
+      return new Response("ok", {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+        },
+      });
+    }
+
     const bodyText = await req.text();
     console.log("Raw Body:", bodyText);
 
     let orderData = {};
+    
     try {
       orderData = JSON.parse(bodyText);
     } catch (e) {
@@ -32,7 +43,7 @@ serve(async (req) => {
             product_data: {
               name: "Emazing Store Order",
             },
-            unit_amount: 5000,
+            unit_amount: (orderData as any).amount ? (orderData as any).amount * 100 : 1000,
           },
           quantity: 1,
         },
@@ -46,7 +57,7 @@ serve(async (req) => {
       JSON.stringify({ success: true, session_url: session.url }),
       { status: 200,
         headers: {
-      "Access-Control-Allow-Origin": "*",  // 允许所有域访问（开发环境用）
+      "Access-Control-Allow-Origin": "*",  
       "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     },
        }
