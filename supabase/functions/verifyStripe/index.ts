@@ -11,39 +11,60 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers":
+          "authorization, x-client-info, apikey, content-type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+      },
+    });
+  }
+
+  // 🔥 不管怎样先打日志，确认函数被调用
+  console.log("verifyStripe invoked, method:", req.method);
+
+  const bodyText = await req.text();
+  console.log("verifyStripe raw body:", bodyText); // 🔥 原始 body
+
+  let parsed;
   try {
-    if (req.method === "OPTIONS") {
-      return new Response("ok", {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-        },
-      });
-    }
+    parsed = JSON.parse(bodyText);
+  } catch (e) {
+    console.error("Invalid JSON:", bodyText);
+    return new Response(
+      JSON.stringify({ success: false, error: "Invalid JSON body" }),
+      {
+        status: 400,
+        headers: { "Access-Control-Allow-Origin": "*" },
+      },
+    );
+  }
 
-    const bodyText = await req.text();
-    console.log("Raw Body:", bodyText);
+  const { orderId, amount } = parsed;
+  console.log("verifyStripe parsed:", { orderId, amount }); // 🔥 解析后的参数
 
-    let orderData = {};
-    
-    try {
-      orderData = JSON.parse(bodyText);
-    } catch (e) {
-      console.error("JSON parse failed:", e.message);
-    }
+  if (!orderId || !amount) {
+    console.error("Missing orderId or amount in request:", parsed);
+    return new Response(
+      JSON.stringify({ success: false, error: "Missing orderId or amount" }),
+      {
+        status: 400,
+        headers: { "Access-Control-Allow-Origin": "*" },
+      },
+    );
+  }
 
-    console.log("Order Data:", orderData);
+  try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
             currency: "usd",
-            product_data: {
-              name: "Emazing Store Order",
-            },
-            unit_amount: (orderData as any).amount ? (orderData as any).amount * 100 : 1000,
+            product_data: { name: "Emazing Store Order" },
+            unit_amount: Math.round(amount * 100),
           },
           quantity: 1,
         },
@@ -51,26 +72,32 @@ serve(async (req) => {
       mode: "payment",
       success_url: "http://localhost:5173/verify?success=true",
       cancel_url: "http://localhost:5173/verify?success=false",
+      metadata: {
+        orderId: String(orderId),
+      },
     });
+
+    console.log("Created Stripe session with metadata:", session.metadata);
 
     return new Response(
       JSON.stringify({ success: true, session_url: session.url }),
-      { status: 200,
+      {
+        status: 200,
         headers: {
-      "Access-Control-Allow-Origin": "*",  
-      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    },
-       }
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers":
+            "authorization, x-client-info, apikey, content-type",
+        },
+      },
     );
   } catch (err) {
-    console.error("Stripe Error:", err.message);
-    return new Response(JSON.stringify({ success: false, error: err.message }), {
-      status: 500,
-      headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    },
-    });
+    console.error("Stripe Error:", err.message, "raw body:", bodyText);
+    return new Response(
+      JSON.stringify({ success: false, error: err.message }),
+      {
+        status: 500,
+        headers: { "Access-Control-Allow-Origin": "*" },
+      },
+    );
   }
 });
-

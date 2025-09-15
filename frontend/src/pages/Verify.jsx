@@ -23,7 +23,7 @@ const Verify = () => {
 
             const response = await axios.post(
                 import.meta.env.VITE_SUPABASE_URL + '/functions/v1/verifyStripe',
-                { success, orderId, userId },
+                { success, orderId},
                 {
                     headers: {
                         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,

@@ -89,7 +89,7 @@ const PlaceOrder = () => {
             console.log("products:", products);
             console.log("getCartAmount():", getCartAmount());
             console.log("delivery_fee:", delivery_fee);
-            console.log("构造出的 orderData:", orderData);
+            console.log("orderData:", orderData);
 
 
             switch (method) {
@@ -114,9 +114,20 @@ const PlaceOrder = () => {
                     break;
 
                 case 'stripe':
-                    console.log("前端要传给 Edge Function 的 orderData:", orderData);
-
                     try {
+                        const { data: insertedOrder, error } = await supabase
+                            .from("orders")
+                            .insert([orderData])
+                            .select("id")
+                            .single();
+
+                        if (error) {
+                            toast.error(error.message);
+                            return;
+                        }
+
+                        const orderId = insertedOrder.id;
+
                         const response = await fetch(
                             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verifyStripe`,
                             {
@@ -125,12 +136,11 @@ const PlaceOrder = () => {
                                     Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
                                     "Content-Type": "application/json",
                                 },
-                                body: JSON.stringify(orderData), // 保证是 JSON 字符串
+                                body: JSON.stringify({ orderId, amount: orderData.amount }),
                             }
                         );
 
                         const data = await response.json();
-                        console.log("Edge Function 返回:", data);
 
                         if (data.success) {
                             window.location.replace(data.session_url);
@@ -138,10 +148,11 @@ const PlaceOrder = () => {
                             toast.error(data.error || "Stripe order failed");
                         }
                     } catch (err) {
-                        console.error("Stripe error:", err);
                         toast.error("Stripe order failed");
                     }
                     break;
+
+
 
 
                 case 'razorpay':
