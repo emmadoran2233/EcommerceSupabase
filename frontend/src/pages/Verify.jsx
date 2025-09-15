@@ -1,59 +1,62 @@
-import React from 'react'
-import { useContext } from 'react'
-import { ShopContext } from '../context/ShopContext'
-import { useSearchParams } from 'react-router-dom'
-import { useEffect } from 'react'
-import { toast } from 'react-toastify'
-import axios from 'axios'
+import React, { useContext, useEffect, useState } from 'react';
+import { ShopContext } from '../context/ShopContext';
+import { useSearchParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import axios from 'axios';
 
 const Verify = () => {
+  const { navigate, setCartItems } = useContext(ShopContext);
+  const [searchParams] = useSearchParams();
 
-    const { navigate, token, setCartItems, backendUrl } = useContext(ShopContext)
-    const [searchParams, setSearchParams] = useSearchParams()
+  const success = searchParams.get('success');
+  const orderId = searchParams.get('orderId');
+  const [loading, setLoading] = useState(true);
 
-    const success = searchParams.get('success')
-    const orderId = searchParams.get('orderId')
+  const checkOrderStatus = async () => {
+    try {
+      if (!orderId) {
+        toast.error("Missing orderId in URL");
+        navigate('/cart');
+        return;
+      }
 
-    const verifyPayment = async () => {
-        try {
-
-            if (!token) {
-                return null
-            }
-
-            const response = await axios.post(
-                import.meta.env.VITE_SUPABASE_URL + '/functions/v1/verifyStripe',
-                { success, orderId},
-                {
-                    headers: {
-                        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json',
-                    },
-                }
-            );
-
-            if (response.data.success) {
-                setCartItems({})
-                navigate('/orders')
-            } else {
-                navigate('/cart')
-            }
-
-        } catch (error) {
-            console.log(error)
-            toast.error(error.message)
+      const response = await axios.post(
+        import.meta.env.VITE_SUPABASE_URL + '/functions/v1/checkOrderStatus',
+        { orderId },
+        {
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
         }
+      );
+
+      if (response.data.success && response.data.order?.payment) {
+        setCartItems({});
+        navigate('/orders');
+      } else {
+        toast.error("Payment not completed");
+        navigate('/cart');
+      }
+
+    } catch (error) {
+      console.error("Verify error:", error);
+      toast.error(error.message || "Verification failed");
+      navigate('/cart');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    useEffect(() => {
-        verifyPayment()
-    }, [token])
+  useEffect(() => {
+    checkOrderStatus();
+  }, [orderId]);
 
-    return (
-        <div>
+  return (
+    <div className="flex justify-center items-center h-[80vh]">
+      {loading ? <p>Verifying payment...</p> : null}
+    </div>
+  );
+};
 
-        </div>
-    )
-}
-
-export default Verify
+export default Verify;

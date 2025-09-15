@@ -70,8 +70,9 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: "http://localhost:5173/verify?success=true",
-      cancel_url: "http://localhost:5173/verify?success=false",
+      success_url: `http://localhost:5173/verify?success=true&orderId=${orderId}`,
+cancel_url: `http://localhost:5173/verify?success=false&orderId=${orderId}`,
+
       metadata: {
         orderId: String(orderId),
       },
