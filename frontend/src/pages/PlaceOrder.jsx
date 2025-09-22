@@ -152,6 +152,45 @@ const PlaceOrder = () => {
                     }
                     break;
 
+                case 'googlepay':
+                    try {
+                        const { data: insertedOrder, error } = await supabase
+                            .from("orders")
+                            .insert([orderData])
+                            .select("id")
+                            .single();
+
+                        if (error) {
+                            toast.error(error.message);
+                            return;
+                        }
+
+                        const orderId = insertedOrder.id;
+
+                        const response = await fetch(
+                            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verifyGooglePay`,
+                            {
+                                method: "POST",
+                                headers: {
+                                    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                                    "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({ orderId, amount: orderData.amount }),
+                            }
+                        );
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            window.location.replace(data.session_url);
+                        } else {
+                            toast.error(data.error || "Google Pay order failed");
+                        }
+                    } catch (err) {
+                        toast.error("Google Pay order failed");
+                    }
+                    break;
+
 
 
 
@@ -215,6 +254,11 @@ const PlaceOrder = () => {
                         <div onClick={() => setMethod('stripe')} className='flex items-center gap-3 border p-2 px-3 cursor-pointer'>
                             <p className={`min-w-3.5 h-3.5 border rounded-full ${method === 'stripe' ? 'bg-green-400' : ''}`}></p>
                             <img className='h-5 mx-4' src={assets.stripe_logo} alt="" />
+                        </div>
+                        <div onClick={() => setMethod('googlepay')}
+                            className='flex items-center gap-3 border p-2 px-3 cursor-pointer'>
+                            <p className={`min-w-3.5 h-3.5 border rounded-full ${method === 'googlepay' ? 'bg-green-400' : ''}`}></p>
+                            <img className='h-14 mx-4' src={assets.googlepay_logo} alt="Google Pay" />
                         </div>
                         <div onClick={() => setMethod('razorpay')} className='flex items-center gap-3 border p-2 px-3 cursor-pointer'>
                             <p className={`min-w-3.5 h-3.5 border rounded-full ${method === 'razorpay' ? 'bg-green-400' : ''}`}></p>

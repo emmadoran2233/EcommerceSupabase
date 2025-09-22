@@ -22,11 +22,10 @@ serve(async (req) => {
     });
   }
 
-  // 🔥 不管怎样先打日志，确认函数被调用
   console.log("verifyStripe invoked, method:", req.method);
 
   const bodyText = await req.text();
-  console.log("verifyStripe raw body:", bodyText); // 🔥 原始 body
+  console.log("verifyStripe raw body:", bodyText); 
 
   let parsed;
   try {
@@ -43,7 +42,7 @@ serve(async (req) => {
   }
 
   const { orderId, amount } = parsed;
-  console.log("verifyStripe parsed:", { orderId, amount }); // 🔥 解析后的参数
+  console.log("verifyStripe parsed:", { orderId, amount }); 
 
   if (!orderId || !amount) {
     console.error("Missing orderId or amount in request:", parsed);
