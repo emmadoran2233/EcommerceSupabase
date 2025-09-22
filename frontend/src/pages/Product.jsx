@@ -18,6 +18,10 @@ const Product = () => {
   const [anonymous, setAnonymous] = useState(false);
   const [userReview, setUserReview] = useState(null);
 
+  const [editingReviewId, setEditingReviewId] = useState(null);
+  const [editText, setEditText] = useState('');
+
+  // ---------------- Product & Reviews ----------------
   const fetchProductData = () => {
     products.map((item) => {
       if (String(item.id) === String(productId)) {
@@ -39,6 +43,11 @@ const Product = () => {
       console.error('Error fetching reviews:', error);
     } else {
       setReviews(data);
+
+      if (user?.id) {
+        const existing = data.find((r) => r.user_id === user.id);
+        setUserReview(existing || null);
+      }
     }
   };
 
@@ -47,6 +56,7 @@ const Product = () => {
     fetchReviews();
   }, [productId, products]);
 
+  // ---------------- Handlers ----------------
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
@@ -56,61 +66,53 @@ const Product = () => {
       return;
     }
 
-    if (userReview) {
-      const { data, error } = await supabase
-        .from('reviews')
-        .update({
-          comment: newComment,
-          user_name: anonymous ? 'Anonymous' : user.name || 'Anonymous',
-        })
-        .eq('id', userReview.id)
-        .select();
-
-      if (error) {
-        console.error('Error updating review:', error);
-      } else {
-        setReviews(reviews.map((r) => (r.id === userReview.id ? data[0] : r)));
-        setUserReview(data[0]);
-      }
-    } else {
-      const { data, error } = await supabase
-        .from('reviews')
-        .insert([
-          {
-            product_id: productId,
-            user_id: user.id,
-            user_name: anonymous ? 'Anonymous' : user.name || 'Anonymous',
-            comment: newComment,
-          },
-        ])
-        .select();
-
-      if (error) {
-        console.error('Error submitting review:', error);
-      } else {
-        setReviews([data[0], ...reviews]);
-        setUserReview(data[0]);
-      }
-    }
-  };
-
-  const handleDeleteReview = async () => {
-    if (!userReview) return;
-
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('reviews')
-      .delete()
-      .eq('id', userReview.id);
+      .insert([
+        {
+          product_id: productId,
+          user_id: user.id,
+          user_name: anonymous ? 'Anonymous' : user.name || 'Anonymous',
+          comment: newComment,
+        },
+      ])
+      .select();
 
-    if (error) {
-      console.error('Error deleting review:', error);
-    } else {
-      setReviews(reviews.filter((r) => r.id !== userReview.id));
-      setUserReview(null);
+    if (!error) {
+      setReviews([data[0], ...reviews]);
+      setUserReview(data[0]);
       setNewComment('');
     }
   };
 
+  const handleUpdateReview = async (id) => {
+    if (!editText.trim()) return;
+
+    const { data, error } = await supabase
+      .from('reviews')
+      .update({ comment: editText })
+      .eq('id', id)
+      .select();
+
+    if (!error) {
+      setReviews(reviews.map((r) => (r.id === id ? data[0] : r)));
+      setEditingReviewId(null);
+      setEditText('');
+    }
+  };
+
+  const handleDeleteReview = async (id) => {
+    const { error } = await supabase.from('reviews').delete().eq('id', id);
+
+    if (!error) {
+      setReviews(reviews.filter((r) => r.id !== id));
+      if (userReview?.id === id) {
+        setUserReview(null);
+      }
+    }
+  };
+
+  // ---------------- Render ----------------
   return productData ? (
     <div className="border-t-2 pt-10 transition-opacity ease-in duration-500 opacity-100">
       {/*----------- Product Data-------------- */}
@@ -148,7 +150,9 @@ const Product = () => {
             {currency}
             {productData.price}
           </p>
-          <p className="mt-5 text-gray-500 md:w-4/5">{productData.description}</p>
+          <p className="mt-5 text-gray-500 md:w-4/5">
+            {productData.description}
+          </p>
           <div className="flex flex-col gap-4 my-8">
             <p>Select Size</p>
             <div className="flex gap-2">
@@ -187,61 +191,105 @@ const Product = () => {
           <p className="border px-5 py-3 text-sm">Reviews ({reviews.length})</p>
         </div>
 
-        {/* Existing reviews */}
+        {/* Reviews list */}
         <div className="flex flex-col gap-4 border px-6 py-6 text-sm text-gray-500">
           {reviews.length === 0 && (
             <p>No reviews yet. Be the first to comment!</p>
           )}
           {reviews.map((review) => (
-            <div key={review.id} className="border-b pb-2">
-              <b>{review.user_name}</b>{' '}
-              <span className="text-xs text-gray-400">
-                {new Date(review.created_at).toLocaleString()}
-              </span>
-              <p>{review.comment}</p>
+            <div
+              key={review.id}
+              className="border-b pb-2 flex justify-between items-start"
+            >
+              <div className="flex-1">
+                <b>{review.user_name}</b>{' '}
+                <span className="text-xs text-gray-400">
+                  {new Date(review.created_at).toLocaleString()}
+                </span>
+
+                {editingReviewId === review.id ? (
+                  <>
+                    <textarea
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      className="border p-2 text-sm w-full mt-1"
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => handleUpdateReview(review.id)}
+                        className="bg-black text-white px-3 py-1 text-sm"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingReviewId(null)}
+                        className="bg-gray-300 px-3 py-1 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p>{review.comment}</p>
+                )}
+              </div>
+
+              {/* Only for the logged-in user's review */}
+              {review.user_id === user?.id &&
+                editingReviewId !== review.id && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingReviewId(review.id);
+                        setEditText(review.comment);
+                      }}
+                      className="text-blue-600 text-sm"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteReview(review.id)}
+                      className="text-red-600 text-sm"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
             </div>
           ))}
         </div>
 
-        {/* Add/Edit/Delete review */}
-        <form onSubmit={handleSubmitReview} className="mt-4 flex flex-col gap-2">
-          <textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Write your review..."
-            className="border p-2 text-sm"
-          />
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={anonymous}
-              onChange={() => setAnonymous(!anonymous)}
+        {/* New review form (only if user hasn't reviewed yet) */}
+        {!userReview && (
+          <form
+            onSubmit={handleSubmitReview}
+            className="mt-4 flex flex-col gap-2"
+          >
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Write your review..."
+              className="border p-2 text-sm"
             />
-            Post as Anonymous
-          </label>
-
-          <div className="flex gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={anonymous}
+                onChange={() => setAnonymous(!anonymous)}
+              />
+              Post as Anonymous
+            </label>
             <button
               type="submit"
-              className="bg-black text-white px-4 py-2 text-sm"
+              className="bg-black text-white px-4 py-2 text-sm self-start"
             >
-              {userReview ? 'Update Review' : 'Submit Review'}
+              Submit Review
             </button>
-
-            {userReview && (
-              <button
-                type="button"
-                onClick={handleDeleteReview}
-                className="bg-red-600 text-white px-4 py-2 text-sm"
-              >
-                Delete Review
-              </button>
-            )}
-          </div>
-        </form>
+          </form>
+        )}
       </div>
-      {/* --------- display related products ---------- */}
+
+      {/* --------- Related products ---------- */}
       <RelatedProducts
         category={productData.category}
         subCategory={productData.subCategory}
