@@ -15,6 +15,8 @@ const Product = () => {
 
   const [reviews, setReviews] = useState([]);
   const [newComment, setNewComment] = useState('');
+  const [anonymous, setAnonymous] = useState(false);
+  const [userReview, setUserReview] = useState(null);
 
   const fetchProductData = () => {
     products.map((item) => {
@@ -49,23 +51,62 @@ const Product = () => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
-    const { data, error } = await supabase
+    if (!user) {
+      alert('You must be logged in to submit a review.');
+      return;
+    }
+
+    if (userReview) {
+      const { data, error } = await supabase
+        .from('reviews')
+        .update({
+          comment: newComment,
+          user_name: anonymous ? 'Anonymous' : user.name || 'Anonymous',
+        })
+        .eq('id', userReview.id)
+        .select();
+
+      if (error) {
+        console.error('Error updating review:', error);
+      } else {
+        setReviews(reviews.map((r) => (r.id === userReview.id ? data[0] : r)));
+        setUserReview(data[0]);
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('reviews')
+        .insert([
+          {
+            product_id: productId,
+            user_id: user.id,
+            user_name: anonymous ? 'Anonymous' : user.name || 'Anonymous',
+            comment: newComment,
+          },
+        ])
+        .select();
+
+      if (error) {
+        console.error('Error submitting review:', error);
+      } else {
+        setReviews([data[0], ...reviews]);
+        setUserReview(data[0]);
+      }
+    }
+  };
+
+  const handleDeleteReview = async () => {
+    if (!userReview) return;
+
+    const { error } = await supabase
       .from('reviews')
-      .insert([
-        {
-          product_id: productId,
-          user_id: user?.id,                     
-          user_name: user?.name || 'Anonymous',
-          comment: newComment
-        }
-      ])
-      .select();
+      .delete()
+      .eq('id', userReview.id);
 
     if (error) {
-      console.error('Error submitting review:', error);
+      console.error('Error deleting review:', error);
     } else {
-      // Update local state instantly
-      setReviews([data[0], ...reviews]);
+      setReviews(reviews.filter((r) => r.id !== userReview.id));
+      setUserReview(null);
       setNewComment('');
     }
   };
@@ -162,26 +203,44 @@ const Product = () => {
           ))}
         </div>
 
-        {/* Add new review */}
-        <form
-          onSubmit={handleSubmitReview}
-          className="mt-4 flex flex-col gap-2"
-        >
+        {/* Add/Edit/Delete review */}
+        <form onSubmit={handleSubmitReview} className="mt-4 flex flex-col gap-2">
           <textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Write your review..."
             className="border p-2 text-sm"
           />
-          <button
-            type="submit"
-            className="bg-black text-white px-4 py-2 text-sm self-start"
-          >
-            Submit Review
-          </button>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={anonymous}
+              onChange={() => setAnonymous(!anonymous)}
+            />
+            Post as Anonymous
+          </label>
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="bg-black text-white px-4 py-2 text-sm"
+            >
+              {userReview ? 'Update Review' : 'Submit Review'}
+            </button>
+
+            {userReview && (
+              <button
+                type="button"
+                onClick={handleDeleteReview}
+                className="bg-red-600 text-white px-4 py-2 text-sm"
+              >
+                Delete Review
+              </button>
+            )}
+          </div>
         </form>
       </div>
-
       {/* --------- display related products ---------- */}
       <RelatedProducts
         category={productData.category}

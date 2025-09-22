@@ -139,20 +139,52 @@ const ShopContextProvider = (props) => {
 
 
     useEffect(() => {
-        getProductsData()
-    }, [])
+    getProductsData();
+  }, []);
 
-    useEffect(() => {
-        // Load from localStorage on first mount
-        const storedToken = localStorage.getItem("token");
-        const storedUserId = localStorage.getItem("user_id");
+  useEffect(() => {
+    // Load existing session from Supabase
+    const initAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        const u = data.session.user;
+        setToken(data.session.access_token);
+        setUserId(u.id);
+        setUser({
+          id: u.id,
+          name: u.user_metadata?.name || "User",
+          email: u.email,
+        });
+        getUserCart(u.id);
+      }
+    };
+    initAuth();
 
-        if (storedToken) setToken(storedToken);
-        if (storedUserId) {
-        setUserId(storedUserId);
-        getUserCart(storedUserId);
+    // Subscribe to login/logout events
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          setToken(session.access_token);
+          setUserId(session.user.id);
+          setUser({
+            id: session.user.id,
+            name: session.user.user_metadata?.name || "User",
+            email: session.user.email,
+          });
+          getUserCart(session.user.id);
+        } else {
+          setToken("");
+          setUserId("");
+          setUser(null);
+          setCartItems({});
         }
-    }, []);
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
     const value = {
         products, currency, delivery_fee,
