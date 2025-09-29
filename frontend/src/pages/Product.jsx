@@ -150,6 +150,12 @@ const Product = () => {
             {currency}
             {productData.price}
           </p>
+          {/* ✅ Stock display */}
+          <p className="mt-2 text-sm text-gray-500">
+            {productData.stock > 0
+              ? `${productData.stock} in stock`
+              : "Out of stock"}
+          </p>
           <p className="mt-5 text-gray-500 md:w-4/5">
             {productData.description}
           </p>
@@ -169,11 +175,17 @@ const Product = () => {
               ))}
             </div>
           </div>
+          {/* ✅ Add to Cart with stock check */}
           <button
             onClick={() => addToCart(productData.id, size)}
-            className="bg-black text-white px-8 py-3 text-sm active:bg-gray-700"
+            disabled={productData.stock <= 0}
+            className={`px-8 py-3 text-sm ${
+              productData.stock <= 0
+                ? "bg-gray-400 text-white cursor-not-allowed"
+                : "bg-black text-white active:bg-gray-700"
+            }`}
           >
-            ADD TO CART
+            {productData.stock <= 0 ? "OUT OF STOCK" : "ADD TO CART"}
           </button>
           <hr className="mt-8 sm:w-4/5" />
           <div className="text-sm text-gray-500 mt-5 flex flex-col gap-1">
