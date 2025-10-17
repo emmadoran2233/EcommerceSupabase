@@ -115,9 +115,22 @@ const PlaceOrder = () => {
 
                 case 'stripe':
                     try {
+                        const userId = localStorage.getItem("user_id");
+
+                        if (!userId) {
+                            toast.error("User not logged in — please login again!");
+                            return;
+                        }
+
+                        // ✅ 插入订单并附加 user_id
                         const { data: insertedOrder, error } = await supabase
                             .from("orders")
-                            .insert([orderData])
+                            .insert([
+                                {
+                                    ...orderData,
+                                    user_id: userId,
+                                },
+                            ])
                             .select("id")
                             .single();
 
@@ -126,8 +139,13 @@ const PlaceOrder = () => {
                             return;
                         }
 
-                        const orderId = insertedOrder.id;
+                        const orderId = insertedOrder?.id;
+                        if (!orderId) {
+                            toast.error("Order ID missing after insert");
+                            return;
+                        }
 
+                        // ✅ 调用 verifyStripe Edge Function
                         const response = await fetch(
                             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verifyStripe`,
                             {
@@ -142,21 +160,36 @@ const PlaceOrder = () => {
 
                         const data = await response.json();
 
-                        if (data.success) {
+                        if (data.success && data.session_url) {
                             window.location.replace(data.session_url);
                         } else {
                             toast.error(data.error || "Stripe order failed");
                         }
+
                     } catch (err) {
+                        console.error("Stripe order error:", err);
                         toast.error("Stripe order failed");
                     }
                     break;
 
                 case 'googlepay':
                     try {
+                        const userId = localStorage.getItem("user_id");
+
+                        if (!userId) {
+                            toast.error("User not logged in — please login again!");
+                            return;
+                        }
+
+                        // ✅ 插入订单并附加 user_id
                         const { data: insertedOrder, error } = await supabase
                             .from("orders")
-                            .insert([orderData])
+                            .insert([
+                                {
+                                    ...orderData,
+                                    user_id: userId,
+                                },
+                            ])
                             .select("id")
                             .single();
 
@@ -165,8 +198,13 @@ const PlaceOrder = () => {
                             return;
                         }
 
-                        const orderId = insertedOrder.id;
+                        const orderId = insertedOrder?.id;
+                        if (!orderId) {
+                            toast.error("Order ID missing after insert");
+                            return;
+                        }
 
+                        // ✅ 调用 verifyGooglePay Edge Function
                         const response = await fetch(
                             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verifyGooglePay`,
                             {
@@ -181,15 +219,18 @@ const PlaceOrder = () => {
 
                         const data = await response.json();
 
-                        if (data.success) {
+                        if (data.success && data.session_url) {
                             window.location.replace(data.session_url);
                         } else {
                             toast.error(data.error || "Google Pay order failed");
                         }
+
                     } catch (err) {
+                        console.error("Google Pay order error:", err);
                         toast.error("Google Pay order failed");
                     }
                     break;
+
 
 
 

@@ -16,47 +16,47 @@ const ShopContextProvider = (props) => {
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
     const [token, setToken] = useState('');
-    const [userId, setUserId] = useState(""); 
+    const [userId, setUserId] = useState("");
     const navigate = useNavigate();
 
 
     const addToCart = async (itemId, size) => {
         if (!size) {
-        toast.error("Select Product Size");
-        return;
+            toast.error("Select Product Size");
+            return;
         }
 
         let cartData = structuredClone(cartItems);
 
         if (cartData[itemId]) {
-        cartData[itemId][size] = (cartData[itemId][size] || 0) + 1;
+            cartData[itemId][size] = (cartData[itemId][size] || 0) + 1;
         } else {
-        cartData[itemId] = { [size]: 1 };
+            cartData[itemId] = { [size]: 1 };
         }
 
         setCartItems(cartData);
 
         try {
-        if (userId) {
-            const { error } = await supabase
-            .from("carts")
-            .update({ items: cartData, updated_at: new Date() })
-            .eq("user_id", userId);
+            if (userId) {
+                const { error } = await supabase
+                    .from("carts")
+                    .update({ items: cartData, updated_at: new Date() })
+                    .eq("user_id", userId);
 
-            if (error) throw error;
-        }
+                if (error) throw error;
+            }
         } catch (err) {
-        toast.error("Failed to update cart: " + err.message);
+            toast.error("Failed to update cart: " + err.message);
         }
     };
 
     const getCartCount = () => {
         let totalCount = 0;
         for (const productId in cartItems) {
-        for (const size in cartItems[productId]) {
-            const qty = cartItems[productId][size];
-            if (qty > 0) totalCount += qty;
-        }
+            for (const size in cartItems[productId]) {
+                const qty = cartItems[productId][size];
+                if (qty > 0) totalCount += qty;
+            }
         }
         return totalCount;
     };
@@ -69,66 +69,76 @@ const ShopContextProvider = (props) => {
         setCartItems(cartData);
 
         try {
-        if (userId) {
-            const { error } = await supabase
-            .from("carts")
-            .update({ items: cartData, updated_at: new Date() })
-            .eq("user_id", userId);
+            if (userId) {
+                const { error } = await supabase
+                    .from("carts")
+                    .update({ items: cartData, updated_at: new Date() })
+                    .eq("user_id", userId);
 
-            if (error) throw error;
-        }
+                if (error) throw error;
+            }
         } catch (err) {
-        toast.error("Failed to update cart: " + err.message);
+            toast.error("Failed to update cart: " + err.message);
         }
     };
 
     const getCartAmount = () => {
         let totalAmount = 0;
         for (const productId in cartItems) {
-        const itemInfo = products.find(
-            (p) => String(p.id) === String(productId)
-        );
-        if (!itemInfo) continue;
+            const itemInfo = products.find(
+                (p) => String(p.id) === String(productId)
+            );
+            if (!itemInfo) continue;
 
-        for (const size in cartItems[productId]) {
-            const qty = cartItems[productId][size];
-            if (qty > 0) {
-            totalAmount += itemInfo.price * qty;
+            for (const size in cartItems[productId]) {
+                const qty = cartItems[productId][size];
+                if (qty > 0) {
+                    totalAmount += itemInfo.price * qty;
+                }
             }
-        }
         }
         return totalAmount;
     };
 
     const getUserCart = async (userId) => {
         try {
-        const { data, error } = await supabase
-            .from("carts")
-            .select("items")
-            .eq("user_id", userId)
-            .maybeSingle();
+            const { data, error } = await supabase
+                .from("carts")
+                .select("items")
+                .eq("user_id", userId)
+                .maybeSingle();
 
-        if (error) {
-            toast.error(error.message);
-        } else {
-            setCartItems(data?.items || {});
-        }
+            if (error) {
+                toast.error(error.message);
+            } else {
+                if (Array.isArray(data?.items)) {
+                    const cartObject = {};
+                    data.items.forEach((item) => {
+                        if (!cartObject[item.id]) cartObject[item.id] = {};
+                        cartObject[item.id][item.size] = item.quantity || 1;
+                    });
+                    setCartItems(cartObject);
+                } else {
+                    setCartItems(data?.items || {});
+                }
+
+            }
         } catch (error) {
-        toast.error(error.message);
+            toast.error(error.message);
         }
     };
 
     const getProductsData = async () => {
         try {
             const { data, error } = await supabase
-            .from("products")
-            .select("*")
-            .order("created_at", { ascending: false })
+                .from("products")
+                .select("*")
+                .order("created_at", { ascending: false })
 
             if (error) {
-            toast.error(error.message)
+                toast.error(error.message)
             } else {
-            setProducts(data)
+                setProducts(data)
             }
         } catch (error) {
             console.log(error)
@@ -148,20 +158,21 @@ const ShopContextProvider = (props) => {
 
         if (storedToken) setToken(storedToken);
         if (storedUserId) {
-        setUserId(storedUserId);
-        getUserCart(storedUserId);
+            setUserId(storedUserId);
+            getUserCart(storedUserId);
         }
     }, []);
 
     const value = {
         products, currency, delivery_fee,
         search, setSearch, showSearch, setShowSearch,
-        cartItems, addToCart,setCartItems,
+        cartItems, addToCart, setCartItems,
         getCartCount, updateQuantity,
         getCartAmount, navigate, backendUrl,
         setToken, token,
-        setUserId, userId
-        
+        setUserId, userId,
+        getUserCart,
+
     }
 
     return (

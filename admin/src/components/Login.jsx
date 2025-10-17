@@ -1,55 +1,74 @@
-import { supabase } from '../supabaseClient'
-import React, { useState } from 'react'
-//import { backendUrl } from '../App'
-import { toast } from 'react-toastify'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const Login = ({setToken}) => {
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, X-Client-Info, apikey, Content-Type",
+};
 
-    const [email,setEmail] = useState('')
-    const [password,setPassword] = useState('') //['admin@example.com', 'Asdfg12345']
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
-    const onSubmitHandler = async (e) => {
-        e.preventDefault();
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-        try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-            });
+    const { user_id, order_id } = await req.json();
 
-            if (error) {
-            toast.error(error.message);
-            return;
-            }
+    if (!user_id || !order_id) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Missing user_id or order_id" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-            // Save the session or access token if needed
-            setToken(data.session.access_token);
+    // 🟢 查询订单
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("items")
+      .eq("id", order_id)
+      .eq("user_id", user_id)
+      .single();
 
-            toast.success("Login successful!");
-        } catch (error) {
-            console.error(error);
-            toast.error(error.message);
-        }
-        };
+    if (orderError || !order) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Order not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-  return (
-    <div className='min-h-screen flex items-center justify-center w-full'>
-        <div className='bg-white shadow-md rounded-lg px-8 py-6 max-w-md'>
-            <h1 className='text-2xl font-bold mb-4'>Admin Panel</h1>
-            <form onSubmit={onSubmitHandler}>
-                <div className='mb-3 min-w-72'>
-                    <p className='text-sm font-medium text-gray-700 mb-2'>Email Address</p>
-                    <input onChange={(e)=>setEmail(e.target.value)} value={email} className='rounded-md w-full px-3 py-2 border border-gray-300 outline-none' type="email" placeholder='your@email.com' required />
-                </div>
-                <div className='mb-3 min-w-72'>
-                    <p className='text-sm font-medium text-gray-700 mb-2'>Password</p>
-                    <input onChange={(e)=>setPassword(e.target.value)} value={password} className='rounded-md w-full px-3 py-2 border border-gray-300 outline-none' type="password" placeholder='Enter your password' required />
-                </div>
-                <button className='mt-2 w-full py-2 px-4 rounded-md text-white bg-black' type="submit"> Login </button>
-            </form>
-        </div>
-    </div>
-  )
-}
+    // 🟢 查询购物车
+    const { data: existingCart, error: cartError } = await supabase
+      .from("carts")
+      .select("items")
+      .eq("user_id", user_id)
+      .maybeSingle();
 
-export default Login
+    if (cartError) throw cartError;
+
+    const existingItems = existingCart?.items ?? [];
+    const newItems = [...existingItems, ...order.items];
+
+    // 🟢 更新或插入购物车
+    if (existingCart) {
+      await supabase.from("carts").update({ items: newItems }).eq("user_id", user_id);
+    } else {
+      await supabase.from("carts").insert([{ user_id, items: newItems }]);
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, message: "Items added to cart!" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    console.error("Reorder Error:", err);
+    return new Response(
+      JSON.stringify({ success: false, message: err.message || "Internal Server Error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
