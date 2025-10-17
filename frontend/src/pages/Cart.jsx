@@ -39,8 +39,8 @@ const Cart = () => {
       <div>
         {Array.isArray(cartData) &&
           cartData
-            .flat(Infinity) 
-            .filter((item) => item && typeof item === "object") 
+            .flat(Infinity)
+            .filter((item) => item && typeof item === "object")
             .map((item, index) => {
               const productData = products.find(
                 (product) => product.id === item.id
@@ -50,9 +50,10 @@ const Cart = () => {
 
               return (
                 <div
-                  key={index}
+                  key={`${item.id}-${item.size}`}
                   className="py-4 border-t border-b text-gray-700 grid grid-cols-[4fr_0.5fr_0.5fr]"
                 >
+
                   <div className="flex items-start gap-6">
                     <img className="w-16 sm:w-20" src={imageSrc} alt="" />
                     <div>
@@ -64,15 +65,26 @@ const Cart = () => {
                         <p className="px-2 sm:px-3 sm:py-1 border bg-slate-50">
                           {item.size}
                         </p>
-                        <input
-                          type="number"
-                          min="1"
-                          defaultValue={item.quantity}
-                          onChange={(e) =>
-                            updateQuantity(item.id, item.size, parseInt(e.target.value) || 1)
-                          }
-                          className="border w-16 text-center ml-3"
-                        />
+                        <div className="flex items-center gap-3 mt-2">
+                          <input
+                            type="number"
+                            min="0"
+                            defaultValue={item.quantity}
+                            onChange={(e) => {
+                              const value = Number(e.target.value);
+                              if (isNaN(value)) return;
+                              updateQuantity(item.id, item.size, value);
+                            }}
+                            className="border w-16 text-center"
+                          />
+                          <img
+                            onClick={() => updateQuantity(item.id, item.size, 0)}
+                            src={assets.bin_icon}
+                            alt="delete"
+                            className="w-5 cursor-pointer hover:opacity-60 transition"
+                          />
+                        </div>
+
 
                       </div>
                     </div>
