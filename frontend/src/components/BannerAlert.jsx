@@ -1,72 +1,51 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, Collapse, IconButton } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import { supabase } from '../supabaseClient';
+import React, { useEffect, useState } from "react";
+import { Alert } from "@mui/material";
+import { supabase } from "../supabaseClient";
 
 const BannerAlert = () => {
   const [banner, setBanner] = useState(null);
-  const [open, setOpen] = useState(true);
 
-  // Fetch banner from Supabase
+  // ✅ Fetch latest active banner
   const fetchBanner = async () => {
-    const { data, error } = await supabase
-      .from('banner')
-      .select('*')
-      .eq('active', true)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("banner")
+        .select("*")
+        .eq("active", true)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .single();
 
-    if (!error && data) setBanner(data);
+      if (!error && data) setBanner(data);
+      else setBanner(null);
+    } catch (err) {
+      console.error("Failed to fetch banner:", err);
+    }
   };
 
   useEffect(() => {
     fetchBanner();
 
-    // Real-time listener (auto-refresh when admin updates banner)
-    const channel = supabase
-      .channel('banner-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'banner' },
-        () => fetchBanner()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // ✅ (Optional) Auto-refresh every 60 seconds
+    const interval = setInterval(fetchBanner, 60000);
+    return () => clearInterval(interval);
   }, []);
 
-  if (!banner || !banner.active) return null;
+  if (!banner?.active || !banner?.message) return null;
 
   return (
-    <Collapse in={open}>
-      <Alert
-        severity="info"
-        action={
-          <IconButton
-            aria-label="close"
-            color="inherit"
-            size="small"
-            onClick={() => setOpen(false)}
-          >
-            <CloseIcon fontSize="inherit" />
-          </IconButton>
-        }
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          borderRadius: 0,
-          zIndex: 2000,
-          textAlign: 'center',
-        }}
-      >
-        {banner.message}
-      </Alert>
-    </Collapse>
+    <Alert
+      severity="info"
+      sx={{
+        mb: 1,
+        borderRadius: 0,
+        position: "sticky",
+        top: 0,
+        zIndex: 1000,
+      }}
+    >
+      {banner.message}
+    </Alert>
   );
 };
 
