@@ -10,13 +10,14 @@ const ShopContextProvider = (props) => {
 
     const currency = '$';
     const delivery_fee = 10;
-    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    // const backendUrl = import.meta.env.VITE_BACKEND_URL
     const [search, setSearch] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
     const [token, setToken] = useState('');
-    const [userId, setUserId] = useState("");
+    const [userId, setUserId] = useState(""); 
+    const [user, setUser] = useState(null);
     const navigate = useNavigate();
 
 
@@ -148,31 +149,60 @@ const ShopContextProvider = (props) => {
 
 
     useEffect(() => {
-        getProductsData()
-    }, [])
+    getProductsData();
+  }, []);
 
-    useEffect(() => {
-        // Load from localStorage on first mount
-        const storedToken = localStorage.getItem("token");
-        const storedUserId = localStorage.getItem("user_id"); // ✅ load userId
+  useEffect(() => {
+    // Load existing session from Supabase
+    const initAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        const u = data.session.user;
+        setToken(data.session.access_token);
+        setUserId(u.id);
+        setUser({
+          id: u.id,
+          name: u.user_metadata?.name || "User",
+          email: u.email,
+        });
+        getUserCart(u.id);
+      }
+    };
+    initAuth();
 
-        if (storedToken) setToken(storedToken);
-        if (storedUserId) {
-            setUserId(storedUserId);
-            getUserCart(storedUserId);
+    // Subscribe to login/logout events
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          setToken(session.access_token);
+          setUserId(session.user.id);
+          setUser({
+            id: session.user.id,
+            name: session.user.user_metadata?.name || "User",
+            email: session.user.email,
+          });
+          getUserCart(session.user.id);
+        } else {
+          setToken("");
+          setUserId("");
+          setUser(null);
+          setCartItems({});
         }
-    }, []);
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
     const value = {
         products, currency, delivery_fee,
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart, setCartItems,
         getCartCount, updateQuantity,
-        getCartAmount, navigate, backendUrl,
-        setToken, token,
-        setUserId, userId,
-        getUserCart,
-
+        getCartAmount, navigate,
+        setToken, token, user
     }
 
     return (

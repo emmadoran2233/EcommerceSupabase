@@ -6,24 +6,72 @@ import Add from './pages/Add'
 import List from './pages/List'
 import Orders from './pages/Orders'
 import Login from './components/Login'
-import Inventory from './pages/Inventory'
-import BannerControl from './pages/BannerControl'
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-export const backendUrl = import.meta.env.VITE_BACKEND_URL
-export const currency = '$'
+export const backendUrl = import.meta.env.VITE_BACKEND_URL;
+export const currency = "$";
 
 const App = () => {
+  const [token, setToken] = useState(localStorage.getItem("token") || "");
+  const [user, setUser] = useState(null);
 
-  const [token, setToken] = useState(localStorage.getItem('token')?localStorage.getItem('token'):'');
+  // ✅ Persist token to localStorage
+  useEffect(() => {
+    localStorage.setItem("token", token);
+  }, [token]);
 
-  useEffect(()=>{
-    localStorage.setItem('token',token)
-  },[token])
+  // ✅ Initialize and listen for Supabase auth changes
+  useEffect(() => {
+    const initAuth = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error(error);
+        toast.error("Failed to fetch user session");
+        return;
+      }
+
+      if (data.session) {
+        const u = data.session.user;
+        setUser({
+          id: u.id,
+          email: u.email,
+          name: u.user_metadata?.name || "Seller",
+        });
+        setToken(data.session.access_token);
+      } else {
+        setUser(null);
+        setToken("");
+      }
+    };
+
+    initAuth();
+
+    // ✅ Listen for login/logout changes
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const u = session.user;
+        setUser({
+          id: u.id,
+          email: u.email,
+          name: u.user_metadata?.name || "Seller",
+        });
+        setToken(session.access_token);
+      } else {
+        setUser(null);
+        setToken("");
+        localStorage.removeItem("token"); // ✅ Clear on logout
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  // ✅ Keep login check
+  if (!token) return <Login setToken={setToken} />;
 
   return (
-    <div className='bg-gray-50 min-h-screen'>
+    <div className="bg-gray-50 min-h-screen">
       <ToastContainer />
       {token === ""
         ? <Login setToken={setToken} />
@@ -37,15 +85,13 @@ const App = () => {
                 <Route path='/add' element={<Add token={token} />} />
                 <Route path='/list' element={<List token={token} />} />
                 <Route path='/orders' element={<Orders token={token} />} />
-                <Route path='/inventory' element={<Inventory />} />
-                <Route path='/banner' element={<BannerControl />} />
               </Routes>
             </div>
           </div>
         </>
       }
     </div>
-  )
-}
+  );
+};
 
-export default App
+export default App;
