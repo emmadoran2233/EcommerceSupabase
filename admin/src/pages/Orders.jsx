@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import { supabase } from '../supabaseClient'
-import { currency } from '../App'
 import { toast } from 'react-toastify'
 import { assets } from '../assets/assets'
 import { currency } from '../App'
