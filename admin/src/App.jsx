@@ -1,13 +1,17 @@
-import React, { useEffect, useState } from 'react'
-import Navbar from './components/Navbar'
-import Sidebar from './components/Sidebar'
-import { Routes, Route } from 'react-router-dom'
-import Add from './pages/Add'
-import List from './pages/List'
-import Orders from './pages/Orders'
-import Login from './components/Login'
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useEffect, useState } from "react";
+import Navbar from "./components/Navbar";
+import Sidebar from "./components/Sidebar";
+import { Routes, Route } from "react-router-dom";
+import Add from "./pages/Add";
+import List from "./pages/List";
+import Orders from "./pages/Orders";
+import Inventory from "./pages/Inventory";
+import BannerControl from "./pages/BannerControl";
+import Login from "./components/Login";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { supabase } from "./supabaseClient"; // ✅ Supabase client
+import { toast } from "react-toastify"; // ✅ Toasts
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL;
 export const currency = "$";
@@ -48,21 +52,23 @@ const App = () => {
     initAuth();
 
     // ✅ Listen for login/logout changes
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const u = session.user;
-        setUser({
-          id: u.id,
-          email: u.email,
-          name: u.user_metadata?.name || "Seller",
-        });
-        setToken(session.access_token);
-      } else {
-        setUser(null);
-        setToken("");
-        localStorage.removeItem("token"); // ✅ Clear on logout
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (session?.user) {
+          const u = session.user;
+          setUser({
+            id: u.id,
+            email: u.email,
+            name: u.user_metadata?.name || "Seller",
+          });
+          setToken(session.access_token);
+        } else {
+          setUser(null);
+          setToken("");
+          localStorage.removeItem("token"); // ✅ Clear on logout
+        }
       }
-    });
+    );
 
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -73,23 +79,32 @@ const App = () => {
   return (
     <div className="bg-gray-50 min-h-screen">
       <ToastContainer />
-      {token === ""
-        ? <Login setToken={setToken} />
-        : <>
+      {token === "" ? (
+        <Login setToken={setToken} />
+      ) : (
+        <>
           <Navbar setToken={setToken} />
           <hr />
-          <div className='flex w-full'>
+          <div className="flex w-full">
             <Sidebar />
-            <div className='w-[70%] mx-auto ml-[max(5vw,25px)] my-8 text-gray-600 text-base'>
+            <div className="w-[70%] mx-auto ml-[max(5vw,25px)] my-8 text-gray-600 text-base">
               <Routes>
-                <Route path='/add' element={<Add token={token} />} />
-                <Route path='/list' element={<List token={token} />} />
-                <Route path='/orders' element={<Orders token={token} />} />
+                <Route path="/add" element={<Add token={token} />} />
+                <Route path="/list" element={<List token={token} />} />
+                <Route path="/orders" element={<Orders token={token} />} />
+                <Route
+                  path="/inventory"
+                  element={<Inventory token={token} user={user} />}
+                />
+                <Route
+                  path="/banner"
+                  element={<BannerControl token={token} user={user} />}
+                />
               </Routes>
             </div>
           </div>
         </>
-      }
+      )}
     </div>
   );
 };

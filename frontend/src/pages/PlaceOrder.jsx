@@ -1,16 +1,23 @@
-import React, { useContext, useState } from 'react'
-import axios from 'axios';
-import Title from '../components/Title'
-import CartTotal from '../components/CartTotal'
-import { assets } from '../assets/assets'
-import { ShopContext } from '../context/ShopContext'
-import { supabase } from "../supabaseClient"
-import { toast } from 'react-toastify'
+import React, { useContext, useState } from "react";
+import axios from "axios";
+import Title from "../components/Title";
+import CartTotal from "../components/CartTotal";
+import { assets } from "../assets/assets";
+import { ShopContext } from "../context/ShopContext";
+import { supabase } from "../supabaseClient";
+import { toast } from "react-toastify";
 
 const PlaceOrder = () => {
   const [method, setMethod] = useState("cod");
-  const { navigate, cartItems, setCartItems, getCartAmount, delivery_fee, products, backendUrl } =
-    useContext(ShopContext);
+  const {
+    navigate,
+    cartItems,
+    setCartItems,
+    getCartAmount,
+    delivery_fee,
+    products,
+    backendUrl,
+  } = useContext(ShopContext);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -23,19 +30,6 @@ const PlaceOrder = () => {
     country: "",
     phone: "",
   });
-    const [method, setMethod] = useState('cod');
-    const { navigate, cartItems, setCartItems, getCartAmount, delivery_fee, products, backendUrl } = useContext(ShopContext);
-    const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        email: '',
-        street: '',
-        city: '',
-        state: '',
-        zipcode: '',
-        country: '',
-        phone: ''
-    })
 
   const onChangeHandler = (event) => {
     const name = event.target.name;
@@ -174,7 +168,9 @@ const PlaceOrder = () => {
             {
               method: "POST",
               headers: {
-                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                Authorization: `Bearer ${
+                  import.meta.env.VITE_SUPABASE_ANON_KEY
+                }`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({ orderId, amount: orderData.amount }),
@@ -211,7 +207,9 @@ const PlaceOrder = () => {
             {
               method: "POST",
               headers: {
-                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                Authorization: `Bearer ${
+                  import.meta.env.VITE_SUPABASE_ANON_KEY
+                }`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({ orderId, amount: orderData.amount }),
