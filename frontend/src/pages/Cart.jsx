@@ -3,48 +3,25 @@ import { ShopContext } from '../context/ShopContext';
 import Title from '../components/Title';
 import { assets } from '../assets/assets';
 import CartTotal from '../components/CartTotal';
-import { supabase } from '../supabaseClient';
 
 const Cart = () => {
 
-  const { products, currency, cartItems, updateQuantity, navigate, userId } = useContext(ShopContext);
+  const { products, currency, cartItems, updateQuantity, navigate } = useContext(ShopContext);
 
   const [cartData, setCartData] = useState([]);
-  const [customizations, setCustomizations] = useState({});
-
-  // ✅ Get customizations from Supabase
-  const fetchCustomizations = async () => {
-    if (!userId) return;
-
-    const { data, error } = await supabase
-      .from("customizations")
-      .select("*")
-      .eq("user_id", userId);
-
-    if (!error && data) {
-      const customObj = {};
-      data.forEach(item => {
-        customObj[item.product_id] = item.custom_text;
-      });
-
-      setCustomizations(customObj);
-    }
-  }
-
-  useEffect(() => {
-    fetchCustomizations();
-  }, [userId]);
 
   useEffect(() => {
     if (products.length > 0) {
       const tempData = [];
       for (const productId in cartItems) {
         for (const size in cartItems[productId]) {
-          if (cartItems[productId][size] > 0) {
+          const item = cartItems[productId][size];
+          if (item.quantity > 0) {
             tempData.push({
               id: productId,
               size: size,
-              quantity: cartItems[productId][size],
+              quantity: item.quantity,
+              customText: item.custom_text || null, // ✅ 自定义内容
             });
           }
         }
@@ -60,15 +37,15 @@ const Cart = () => {
         <Title text1="YOUR" text2="CART" />
       </div>
 
+      {/* cart items list */}
       <div>
         {cartData.map((item) => {
           const productData = products.find(
-            (product) => product.id === item.id
+            (product) => String(product.id) === String(item.id)
           );
           if (!productData) return null;
 
           const imageSrc = productData.images?.[0] || "";
-          const customText = customizations[item.id] || null;
 
           return (
             <div
@@ -83,9 +60,9 @@ const Cart = () => {
                   </p>
 
                   {/* ✅ 显示自定义内容 */}
-                  {customText && (
+                  {item.customText && (
                     <p className="text-sm mt-1 italic text-orange-600">
-                      Custom: {customText}
+                      ✎ Custom: {item.customText}
                     </p>
                   )}
 
@@ -118,6 +95,7 @@ const Cart = () => {
         })}
       </div>
 
+      {/* checkout */}
       <div className="flex justify-end my-20">
         <div className="w-full sm:w-[450px]">
           <CartTotal />
