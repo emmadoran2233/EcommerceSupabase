@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 const Inventory = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [toggleLoadingId, setToggleLoadingId] = useState(null);
 
   // Fetch all products
   const fetchProducts = async () => {
@@ -35,6 +36,22 @@ const Inventory = () => {
     setLoading(false);
   };
 
+  // ✅ Toggle customizable
+  const toggleCustomizable = async (id, value) => {
+    setToggleLoadingId(id);
+    const { error } = await supabase
+      .from("products")
+      .update({ is_customizable: value })
+      .eq("id", id);
+
+    if (error) {
+      alert("Failed to update customizable: " + error.message);
+    } else {
+      await fetchProducts(); // refresh list
+    }
+    setToggleLoadingId(null);
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Inventory Management</h1>
@@ -45,14 +62,18 @@ const Inventory = () => {
             <th className="p-2 border">Price</th>
             <th className="p-2 border">Stock</th>
             <th className="p-2 border">Update Stock</th>
+            {/* ✅ New column */}
+            <th className="p-2 border text-center">Customizable</th>
           </tr>
         </thead>
+
         <tbody>
           {products.map((p) => (
             <tr key={p.id}>
               <td className="p-2 border">{p.name}</td>
               <td className="p-2 border">${p.price}</td>
               <td className="p-2 border">{p.stock}</td>
+
               <td className="p-2 border">
                 <input
                   type="number"
@@ -68,6 +89,18 @@ const Inventory = () => {
                 >
                   Save
                 </button>
+              </td>
+
+              {/* ✅ Customizable Toggle */}
+              <td className="p-2 border text-center">
+                <input
+                  type="checkbox"
+                  checked={!!p.is_customizable}
+                  disabled={toggleLoadingId === p.id}
+                  onChange={() =>
+                    toggleCustomizable(p.id, !p.is_customizable)
+                  }
+                />
               </td>
             </tr>
           ))}
