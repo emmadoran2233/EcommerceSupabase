@@ -15,11 +15,11 @@ const Product = () => {
   
   // ✅ Modal State
   const [showModal, setShowModal] = useState(false);
-  const [customText, setCustomText] = useState("");
+  const [customText, setCustomText] = useState("");  // ✅ 保存用户输入显示在 UI
 
-  const fetchProductData = async () => {
+  const fetchProductData = () => {
     products.map((item) => {
-      if (item.id === productId) {
+      if (String(item.id) === String(productId)) {
         setProductData(item)
         setImage(item.images[0])
         return null;
@@ -32,33 +32,28 @@ const Product = () => {
   }, [productId, products])
 
   const handleSaveCustomization = async () => {
-  if (!size) {
-    alert("Please select a size before customizing");
-    return;
-  }
 
-  if (!customText.trim()) {
-    alert("Please enter text before confirming");
-    return;
-  }
+    if (!customText.trim()) {
+      alert("Please enter text before confirming");
+      return;
+    }
 
-  const { error } = await supabase
-    .from("customizations")
-    .insert([
-      {
-        product_id: productData.id,
-        custom_text: customText.trim(),
-      },
-    ]);
+    const { error } = await supabase
+      .from("customizations")
+      .insert([
+        {
+          product_id: productData.id,
+          custom_text: customText.trim(),
+        },
+      ]);
 
-  if (error) {
-    alert("Failed to save customization: " + error.message);
-  } else {
-    alert("Customization saved ✅!");
-    setCustomText("");
-    setShowModal(false);
-  }
-};
+    if (error) {
+      alert("Failed to save customization: " + error.message);
+    } else {
+      setShowModal(false);
+      alert("Customization saved ✅");
+    }
+  };
 
 
   return productData ? (
@@ -122,6 +117,13 @@ const Product = () => {
 
           <p className='mt-5 text-3xl font-medium'>{currency}{productData.price}</p>
           <p className='mt-5 text-gray-500 md:w-4/5'>{productData.description}</p>
+
+          {/* ✅ Display customization below description */}
+          {customText && (
+            <p className="mt-3 text-orange-600 font-medium text-sm">
+              ✎ Custom: {customText}
+            </p>
+          )}
 
           {/* Size Select */}
           <div className='flex flex-col gap-4 my-8'>
