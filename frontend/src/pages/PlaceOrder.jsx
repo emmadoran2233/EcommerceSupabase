@@ -203,8 +203,6 @@ const PlaceOrder = () => {
                             toast.error("Order ID missing after insert");
                             return;
                         }
-
-                        // ✅ 调用 verifyGooglePay Edge Function
                         const response = await fetch(
                             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verifyGooglePay`,
                             {
