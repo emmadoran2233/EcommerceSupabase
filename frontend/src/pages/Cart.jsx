@@ -5,9 +5,7 @@ import { assets } from '../assets/assets';
 import CartTotal from '../components/CartTotal';
 
 const Cart = () => {
-
   const { products, currency, cartItems, updateQuantity, navigate } = useContext(ShopContext);
-
   const [cartData, setCartData] = useState([]);
 
   useEffect(() => {
@@ -21,7 +19,7 @@ const Cart = () => {
               id: productId,
               size: size,
               quantity: item.quantity,
-              customText: item.custom_text || null, // ✅ 自定义内容
+              customText: item.custom_text || null, 
             });
           }
         }
@@ -59,7 +57,6 @@ const Cart = () => {
                     {productData.name}
                   </p>
 
-                  {/* ✅ 显示自定义内容 */}
                   {item.customText && (
                     <p className="text-sm mt-1 italic text-orange-600">
                       ✎ Custom: {item.customText}

@@ -8,17 +8,16 @@ export const ShopContext = createContext();
 const ShopContextProvider = (props) => {
     const currency = '$';
     const delivery_fee = 10;
-    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    // const backendUrl = import.meta.env.VITE_BACKEND_URL
     const [search, setSearch] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
     const [token, setToken] = useState('');
-    const [userId, setUserId] = useState("");
+    const [userId, setUserId] = useState(""); 
+    const [user, setUser] = useState(null);
     const navigate = useNavigate();
 
-
-    // ✅ 新版 addToCart，加入 custom_text
     const addToCart = async (itemId, size, customText = null) => {
         if (!size) {
             toast.error("Select Product Size");
@@ -26,17 +25,13 @@ const ShopContextProvider = (props) => {
         }
 
         let cartData = structuredClone(cartItems);
-
-        // ✅ SKU 已存在
         if (cartData[itemId] && cartData[itemId][size]) {
             cartData[itemId][size].quantity += 1;
 
-            // ✅ 如果有新传 custom text，则覆盖旧的
             if (customText) {
                 cartData[itemId][size].custom_text = customText;
             }
         } 
-        // ✅ SKU 不存在
         else {
             cartData[itemId] = cartData[itemId] || {};
             cartData[itemId][size] = {
@@ -47,7 +42,6 @@ const ShopContextProvider = (props) => {
 
         setCartItems(cartData);
 
-        // ✅ 非登录模式暂不推送到 carts 表
     };
 
 
@@ -111,6 +105,50 @@ const ShopContextProvider = (props) => {
         getProductsData();
     }, []);
 
+  useEffect(() => {
+    // Load existing session from Supabase
+    const initAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        const u = data.session.user;
+        setToken(data.session.access_token);
+        setUserId(u.id);
+        setUser({
+          id: u.id,
+          name: u.user_metadata?.name || "User",
+          email: u.email,
+        });
+        getUserCart(u.id);
+      }
+    };
+    initAuth();
+
+    // Subscribe to login/logout events
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          setToken(session.access_token);
+          setUserId(session.user.id);
+          setUser({
+            id: session.user.id,
+            name: session.user.user_metadata?.name || "User",
+            email: session.user.email,
+          });
+          getUserCart(session.user.id);
+        } else {
+          setToken("");
+          setUserId("");
+          setUser(null);
+          setCartItems({});
+        }
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
     const value = {
         products, currency, delivery_fee,
         search, setSearch, showSearch, setShowSearch,
@@ -126,6 +164,5 @@ const ShopContextProvider = (props) => {
             {props.children}
         </ShopContext.Provider>
     );
-};
 
-export default ShopContextProvider;
+};

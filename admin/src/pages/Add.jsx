@@ -3,7 +3,7 @@ import { assets } from '../assets/assets'
 import { toast } from 'react-toastify'
 import { supabase } from '../supabaseClient'
 
-const Add = ({ token }) => {
+const Add = ({ token, user }) => {
   const [image1, setImage1] = useState(false)
   const [image2, setImage2] = useState(false)
   const [image3, setImage3] = useState(false)
@@ -21,9 +21,16 @@ const Add = ({ token }) => {
   const onSubmitHandler = async (e) => {
     e.preventDefault()
 
+    if (!user?.id) {
+      toast.error("You must be logged in to add products.")
+      return
+    }
+
     try {
       const imageUrls = []
       const images = [image1, image2, image3, image4]
+
+      // ✅ Upload images to Supabase storage
       for (let img of images) {
         if (img) {
           const fileName = `${Date.now()}_${img.name}`
@@ -41,25 +48,27 @@ const Add = ({ token }) => {
         }
       }
 
+      // ✅ Insert new product linked to seller
       const { error: insertError } = await supabase.from("products").insert([
         {
           name,
           description,
-          price,
+          price: parseFloat(price),
           category,
           sub_category: subCategory,
           bestseller,
           sizes,
           images: imageUrls,
-          stock: parseInt(stock) // ✅ save stock
+          stock: parseInt(stock),
+          seller_id: user.id, // ✅ link product to current seller
         },
       ])
 
       if (insertError) throw insertError
 
-      toast.success("Product added successfully!")
+      toast.success("✅ Product added successfully!")
 
-      // Reset form
+      // ✅ Reset form
       setName("")
       setDescription("")
       setPrice("")
@@ -73,7 +82,7 @@ const Add = ({ token }) => {
       setImage3(false)
       setImage4(false)
     } catch (error) {
-      console.log(error)
+      console.error(error)
       toast.error(error.message)
     }
   }
@@ -83,9 +92,9 @@ const Add = ({ token }) => {
       onSubmit={onSubmitHandler}
       className="flex flex-col w-full items-start gap-3"
     >
-      {/* Image Upload */}
+      {/* ---------------- Image Upload ---------------- */}
       <div>
-        <p className="mb-2">Upload Image</p>
+        <p className="mb-2 font-semibold">Upload Image</p>
         <div className="flex gap-2">
           {[1, 2, 3, 4].map((num, idx) => {
             const setImage = [setImage1, setImage2, setImage3, setImage4][idx]
@@ -93,7 +102,7 @@ const Add = ({ token }) => {
             return (
               <label key={num} htmlFor={`image${num}`}>
                 <img
-                  className="w-20"
+                  className="w-20 h-20 object-cover border cursor-pointer"
                   src={!image ? assets.upload_area : URL.createObjectURL(image)}
                   alt=""
                 />
@@ -109,38 +118,39 @@ const Add = ({ token }) => {
         </div>
       </div>
 
-      {/* Product Name */}
+      {/* ---------------- Product Name ---------------- */}
       <div className="w-full">
-        <p className="mb-2">Product name</p>
+        <p className="mb-2 font-semibold">Product name</p>
         <input
           onChange={(e) => setName(e.target.value)}
           value={name}
-          className="w-full max-w-[500px] px-3 py-2"
+          className="w-full max-w-[500px] px-3 py-2 border rounded"
           type="text"
           placeholder="Type here"
           required
         />
       </div>
 
-      {/* Description */}
+      {/* ---------------- Description ---------------- */}
       <div className="w-full">
-        <p className="mb-2">Product description</p>
+        <p className="mb-2 font-semibold">Product description</p>
         <textarea
           onChange={(e) => setDescription(e.target.value)}
           value={description}
-          className="w-full max-w-[500px] px-3 py-2"
+          className="w-full max-w-[500px] px-3 py-2 border rounded"
           placeholder="Write content here"
           required
         />
       </div>
 
-      {/* Category / Subcategory / Price / Stock */}
+      {/* ---------------- Category, Price, Stock ---------------- */}
       <div className="flex flex-col sm:flex-row gap-2 w-full sm:gap-8">
         <div>
-          <p className="mb-2">Product category</p>
+          <p className="mb-2 font-semibold">Product category</p>
           <select
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full px-3 py-2"
+            value={category}
+            className="w-full px-3 py-2 border rounded"
           >
             <option value="Men">Men</option>
             <option value="Women">Women</option>
@@ -149,10 +159,11 @@ const Add = ({ token }) => {
         </div>
 
         <div>
-          <p className="mb-2">Sub category</p>
+          <p className="mb-2 font-semibold">Sub category</p>
           <select
             onChange={(e) => setSubCategory(e.target.value)}
-            className="w-full px-3 py-2"
+            value={subCategory}
+            className="w-full px-3 py-2 border rounded"
           >
             <option value="Topwear">Topwear</option>
             <option value="Bottomwear">Bottomwear</option>
@@ -161,11 +172,11 @@ const Add = ({ token }) => {
         </div>
 
         <div>
-          <p className="mb-2">Product Price</p>
+          <p className="mb-2 font-semibold">Price</p>
           <input
             onChange={(e) => setPrice(e.target.value)}
             value={price}
-            className="w-full px-3 py-2 sm:w-[120px]"
+            className="w-full px-3 py-2 sm:w-[120px] border rounded"
             type="number"
             placeholder="25"
             required
@@ -174,22 +185,22 @@ const Add = ({ token }) => {
 
         {/* ✅ Stock Input */}
         <div>
-          <p className="mb-2">Stock</p>
+          <p className="mb-2 font-semibold">Stock</p>
           <input
             type="number"
             min="0"
             value={stock}
             onChange={(e) => setStock(e.target.value)}
-            className="w-full px-3 py-2 sm:w-[120px]"
+            className="w-full px-3 py-2 sm:w-[120px] border rounded"
             placeholder="100"
             required
           />
         </div>
       </div>
 
-      {/* Sizes */}
+      {/* ---------------- Sizes ---------------- */}
       <div>
-        <p className="mb-2">Product Sizes</p>
+        <p className="mb-2 font-semibold">Product Sizes</p>
         <div className="flex gap-3">
           {["S", "M", "L", "XL", "XXL"].map((size) => (
             <div
@@ -204,8 +215,8 @@ const Add = ({ token }) => {
             >
               <p
                 className={`${
-                  sizes.includes(size) ? "bg-pink-100" : "bg-slate-200"
-                } px-3 py-1 cursor-pointer`}
+                  sizes.includes(size) ? "bg-pink-200" : "bg-gray-200"
+                } px-3 py-1 cursor-pointer rounded`}
               >
                 {size}
               </p>
@@ -214,7 +225,7 @@ const Add = ({ token }) => {
         </div>
       </div>
 
-      {/* Bestseller checkbox */}
+      {/* ---------------- Bestseller ---------------- */}
       <div className="flex gap-2 mt-2">
         <input
           onChange={() => setBestseller((prev) => !prev)}
@@ -227,10 +238,10 @@ const Add = ({ token }) => {
         </label>
       </div>
 
-      {/* Submit */}
+      {/* ---------------- Submit ---------------- */}
       <button
         type="submit"
-        className="w-28 py-3 mt-4 bg-black text-white"
+        className="w-28 py-3 mt-4 bg-black text-white rounded hover:bg-gray-800"
       >
         ADD
       </button>

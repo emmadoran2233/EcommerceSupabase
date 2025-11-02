@@ -1,13 +1,13 @@
-import React, { useContext, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import React, { useContext, useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import RelatedProducts from '../components/RelatedProducts';
 import { supabase } from '../supabaseClient';
 
 const Product = () => {
-
   const { productId } = useParams();
-  const { products, currency ,addToCart } = useContext(ShopContext);
+  const { products, currency, addToCart, user } = useContext(ShopContext);
+
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState('')
   const [size,setSize] = useState('')
@@ -61,6 +61,63 @@ const Product = () => {
   };
 
 
+  // ---------------- Handlers ----------------
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+
+    if (!user) {
+      alert('You must be logged in to submit a review.');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('reviews')
+      .insert([
+        {
+          product_id: productId,
+          user_id: user.id,
+          user_name: anonymous ? 'Anonymous' : user.name || 'Anonymous',
+          comment: newComment,
+        },
+      ])
+      .select();
+
+    if (!error) {
+      setReviews([data[0], ...reviews]);
+      setUserReview(data[0]);
+      setNewComment('');
+    }
+  };
+
+  const handleUpdateReview = async (id) => {
+    if (!editText.trim()) return;
+
+    const { data, error } = await supabase
+      .from('reviews')
+      .update({ comment: editText })
+      .eq('id', id)
+      .select();
+
+    if (!error) {
+      setReviews(reviews.map((r) => (r.id === id ? data[0] : r)));
+      setEditingReviewId(null);
+      setEditText('');
+    }
+  };
+
+  const handleDeleteReview = async (id) => {
+    const { error } = await supabase.from('reviews').delete().eq('id', id);
+
+    if (!error) {
+      setReviews(reviews.filter((r) => r.id !== id));
+      if (userReview?.id === id) {
+        setUserReview(null);
+      }
+    }
+  };
+
+  // ---------------- Render ----------------
   return productData ? (
     <div className='border-t-2 pt-10 transition-opacity ease-in duration-500 opacity-100'>
       
@@ -152,7 +209,10 @@ const Product = () => {
 
       <RelatedProducts category={productData.category} subCategory={productData.subCategory} />
     </div>
-  ) : <div className=' opacity-0'></div>
-}
+  ) : (
+    <div className="opacity-0"></div>
+  );
+};
 
-export default Product
+export default Product;
+
