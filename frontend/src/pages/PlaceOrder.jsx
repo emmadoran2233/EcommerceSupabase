@@ -109,8 +109,15 @@ const PlaceOrder = () => {
         }
       }
 
+      const randomPart = Math.floor(Math.random() * 10000)
+        .toString()
+        .padStart(4, "0");
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const customOrderId = `ORD-${datePart}-${randomPart}`;
+
       // ✅ Prepare orderData
       let orderData = {
+        order_id: customOrderId,
         address: formData,
         items: orderItems,
         amount: getCartAmount() + delivery_fee,
@@ -118,7 +125,7 @@ const PlaceOrder = () => {
         payment: false,
         status: "Order Placed",
         date: new Date().toISOString(),
-        sellers: [...new Set(orderItems.map((item) => item.seller_id))], // ✅ unique sellers
+        //sellers: [...new Set(orderItems.map((item) => item.seller_id))], // ✅ unique sellers
       };
 
       // Optional: track buyer (if logged in)

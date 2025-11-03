@@ -67,6 +67,9 @@ const Orders = ({ token, user }) => {
             <img className="w-12" src={assets.parcel_icon} alt="parcel" />
 
             <div>
+              <p className="text-sm font-semibold text-gray-700 mb-2">
+                🧾 Order ID: {order.order_id || "N/A"}
+              </p>
               <div>
                 {/* ✅ Only show this seller’s items */}
                 {order.items
