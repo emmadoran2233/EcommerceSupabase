@@ -3,7 +3,9 @@ import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import { Routes, Route } from "react-router-dom";
 import Add from "./pages/Add";
+import Lend from "./pages/Lend";
 import List from "./pages/List";
+import LendList from './pages/LendList'
 import Orders from "./pages/Orders";
 import Inventory from "./pages/Inventory";
 import BannerControl from "./pages/BannerControl";
@@ -89,8 +91,10 @@ const App = () => {
             <Sidebar />
             <div className="w-[70%] mx-auto ml-[max(5vw,25px)] my-8 text-gray-600 text-base">
               <Routes>
-                <Route path="/add" element={<Add token={token} />} />
-                <Route path="/list" element={<List token={token} />} />
+                <Route path="/add-sell" element={<Add user={user} />} />
+                <Route path="/list" element={<List user={user} />} />
+                <Route path="/add-lend" element={<Lend user={user} />} />
+                <Route path="/lend-list" element={<LendList user={user} />} />
                 <Route path="/orders" element={<Orders token={token} />} />
                 <Route
                   path="/inventory"
