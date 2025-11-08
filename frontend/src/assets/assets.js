@@ -74,7 +74,19 @@ import razorpay_logo from './razorpay_logo.png'
 import stripe_logo from './stripe_logo.png'
 import googlepay_logo from './googlepay_logo.png';
 import cross_icon from './cross_icon.png'
-
+import iphone17Pro_2 from './iphone17Pro_2.png';
+import robot_img from './robot_img.png';
+import drone_2 from './drone_2.png';
+import camera_1 from './camera_1.png';
+import radon_detector from './radon_detector.png';
+import partyTent from './partyTent.png';
+import questVR from './questVR.png';
+import carpetCleaner from './carpetCleaner.png';
+import weddingDress from './weddingDress.png';
+import electricGenerator from './electricGenerator.png';
+import rolex from './rolex.png';
+import chanel from './chanel.png';
+import Louis from './Louis.png';
 export const assets = {
     logo,
     hero_img,
@@ -94,7 +106,18 @@ export const assets = {
     razorpay_logo,
     stripe_logo,
     googlepay_logo,
-    cross_icon
+    cross_icon,
+    iphone17Pro_2,
+    robot_img,
+    drone_2,
+    camera_1,
+    radon_detector,
+    partyTent, 
+    questVR,
+    carpetCleaner,
+    weddingDress,
+    electricGenerator,
+    rolex, chanel, Louis
 }
 
 export const products = [

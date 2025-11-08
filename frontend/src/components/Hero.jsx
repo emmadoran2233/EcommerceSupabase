@@ -1,27 +1,161 @@
-import React from 'react'
-import { assets } from '../assets/assets'
-
+import React, { useState, useEffect, useRef } from "react";
+import { assets } from "../assets/assets";
 const Hero = () => {
-  return (
-    <div className='flex flex-col sm:flex-row border border-gray-400'>
-      {/* Hero Left Side */}
-      <div className='w-full sm:w-1/2 flex items-center justify-center py-10 sm:py-0'>
-            <div className='text-[#414141]'>
-                <div className='flex items-center gap-2'>
-                    <p className='w-8 md:w-11 h-[2px] bg-[#414141]'></p>
-                    <p className=' font-medium text-sm md:text-base'>OUR BESTSELLERS</p>
-                </div>
-                <h1 className='prata-regular text-3xl sm:py-3 lg:text-5xl leading-relaxed'>Latest Arrivals</h1>
-                <div className='flex items-center gap-2'>
-                    <p className='font-semibold text-sm md:text-base'>SHOP NOW</p>
-                    <p className='w-8 md:w-11 h-[1px] bg-[#414141]'></p>
-                </div>
-            </div>
-      </div>
-      {/* Hero Right Side */}
-      <img className='w-full sm:w-1/2' src={assets.hero_img} alt="" />
-    </div>
-  )
-}
+  const bestRentals = [
+    assets.drone_2,
+    assets.robot_img,
+    assets.chanel,
+    assets.iphone17Pro_2,
+    assets.partyTent,
+    assets.radon_detector,
+    assets.rolex,
+    assets.camera_1,
+    assets.questVR,
+    assets.Louis,
+    assets.carpetCleaner,
+    assets.weddingDress,
+    assets.electricGenerator,
+  ].filter(Boolean);
+  const [index, setIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(3);
+  const [itemWidth, setItemWidth] = useState(0); // how many images visible at once
+  const autoplay = true;
+  const intervalMs = 3500;
+  const autoplayRef = useRef(null);
+  const viewportRef = useRef(null);
 
-export default Hero
+  useEffect(() => {
+    const updateLayout = () => {
+      const w = window.innerWidth;
+      const newVisible = w < 640 ? 1 : (w < 960 ? 2 : 3);
+      setVisibleCount(newVisible);
+
+      // measure viewport width and compute item width (px)
+      const vp = viewportRef.current;
+      const vpWidth = vp ? vp.clientWidth : Math.min(1024, w);
+      setItemWidth(Math.floor(vpWidth / newVisible));
+
+      // clamp index so we don't overflow
+      setIndex((i) => {
+        const max = Math.max(0, bestRentals.length - newVisible);
+        return Math.min(i, max);
+      });
+    };
+
+    updateLayout();
+    window.addEventListener("resize", updateLayout);
+    return () => window.removeEventListener("resize", updateLayout);
+  }, [bestRentals.length]);
+
+  const maxIndex = Math.max(0, bestRentals.length - visibleCount);
+
+  const goPrev = () => setIndex((i) => (i - 1 < 0 ? maxIndex : i - 1));
+  const goNext = () => setIndex((i) => (i + 1 > maxIndex ? 0 : i + 1));
+
+  if (bestRentals.length === 0) return null;
+  // autoplay
+  useEffect(() => {
+    if (!autoplay || bestRentals.length <= visibleCount) return;
+    autoplayRef.current = setInterval(() => {
+      setIndex((i) => (i + 1 > maxIndex ? 0 : i + 1));
+    }, intervalMs);
+    return () => clearInterval(autoplayRef.current);
+  }, [autoplay, bestRentals.length, visibleCount, intervalMs, maxIndex]);
+
+  if (bestRentals.length === 0) return null;
+
+  // item width is 100% / visibleCount (in relation to carousel viewport)
+  const itemWidthPercent = 100 / visibleCount;
+  const translatePercent = -(index * itemWidthPercent);
+
+  return (
+    <section className="w-full max-w-7xl mx-auto px-4 py-8">
+      {/* Large hero image (highlighted) */}
+      <div className="w-full flex justify-center mb-6">
+        <div className="w-full sm:w-11/12 lg:w-3/4 overflow-hidden rounded-lg bg-gray-50">
+          <img
+            src={assets.hero_img}
+            alt="Featured"
+            className="block w-full max-h-[460px] mx-auto object-contain"
+          />
+        </div>
+      </div>
+
+      {/* Separator with centered text */}
+      <div className="flex items-center justify-center gap-4 my-6">
+        <div className="h-px w-20 bg-gray-300" />
+        <p className="text-center text-sm font-medium text-gray-700">
+          Shop our best rentals
+        </p>
+        <div className="h-px w-20 bg-gray-300" />
+      </div>
+
+          {/* Carousel viewport */}
+      <div className="w-full flex justify-center">
+        <div className="w-full sm:w-11/12 lg:w-3/4 relative">
+          <div
+            ref={viewportRef}
+            className="overflow-hidden rounded-lg"
+            style={{ height: "auto" }}
+          >
+            {/* track */}
+            <div
+              className="flex transition-transform duration-500 ease-in-out"
+              style={{
+                transform: `translateX(-${index * itemWidth}px)`,
+                width: `${bestRentals.length * itemWidth}px`,
+              }}
+            >
+              {bestRentals.map((src, i) => (
+                <div
+                  key={i}
+                  className="flex-shrink-0 p-1"
+                  style={{ width: `${itemWidth}px` }}
+                >
+                  <div className="w-full h-56 sm:h-72 md:h-96 overflow-hidden rounded-lg bg-white">
+                    <img
+                      src={src}
+                      alt={`Best rental ${i + 1}`}
+                      className="w-full h-full object-cover block"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* prev / next buttons */}
+          <button
+            onClick={goPrev}
+            aria-label="Previous"
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white px-3 py-1 rounded shadow"
+          >
+            ‹
+          </button>
+          <button
+            onClick={goNext}
+            aria-label="Next"
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white px-3 py-1 rounded shadow"
+          >
+            ›
+          </button>
+
+          {/* page indicators */}
+          <div className="flex items-center justify-center gap-2 mt-3">
+            {Array.from({ length: maxIndex + 1 }).map((_, page) => (
+              <button
+                key={page}
+                onClick={() => setIndex(page)}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  page === index ? "bg-gray-800" : "bg-gray-300"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default Hero;

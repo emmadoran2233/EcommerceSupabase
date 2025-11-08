@@ -5,7 +5,7 @@ import { Routes, Route } from "react-router-dom";
 import Add from "./pages/Add";
 import Lend from "./pages/Lend";
 import List from "./pages/List";
-import LendList from './pages/LendList'
+import LendList from "./pages/LendList";
 import Orders from "./pages/Orders";
 import Inventory from "./pages/Inventory";
 import BannerControl from "./pages/BannerControl";
@@ -81,8 +81,11 @@ const App = () => {
   return (
     <div className="bg-gray-50 min-h-screen">
       <ToastContainer />
-      {token === "" ? (
-        <Login setToken={setToken} />
+      {!token ? (
+        <>
+          <Login setToken={setToken} />
+          <Route path="/" element={<Login setToken={setToken} />} />
+        </>
       ) : (
         <>
           <Navbar setToken={setToken} />
