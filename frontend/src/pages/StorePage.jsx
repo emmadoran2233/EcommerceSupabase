@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 import { toast } from "react-toastify";
 import ProductCard from "../components/ProductCard";
 import { assets } from "../assets/assets";
+import LendCard from "../components/ServiceCard";
 
 const StorePage = () => {
   const { sellerId } = useParams();
@@ -35,7 +36,7 @@ const StorePage = () => {
 
       if (productError) throw productError;
       setProducts(productData || []);
-
+      console.log("Products data:", productData);
       // 3️⃣ Fetch seller’s lend items
       const { data: lendData, error: lendError } = await supabase
         .from("lend_items")
@@ -45,6 +46,7 @@ const StorePage = () => {
 
       if (lendError) throw lendError;
       setLends(lendData || []);
+      console.log("Lend items data:", lendData);
     } catch (error) {
       console.error("Error loading store data:", error);
       toast.error("Failed to load store data");
@@ -72,10 +74,8 @@ const StorePage = () => {
       </div>
     );
 
-  // ---------------- Render ----------------
   return (
     <div className="py-10 max-w-6xl mx-auto px-4">
-      {/* 🏪 Store Header */}
       <div className="border-b pb-6 mb-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
         <img
           src={seller?.avatar_url || assets.user_icon}
@@ -90,17 +90,15 @@ const StorePage = () => {
             {seller?.bio || "Verified seller on our marketplace"}
           </p>
         </div>
-      </div>
-
-      {/* 💬 Store Intro */}
-      <div className="bg-gray-50 p-6 rounded-lg mb-10 border shadow-sm">
-        <h2 className="text-lg font-semibold mb-2 text-gray-800">
-          Services I Offer
-        </h2>
-        <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-          {seller?.intro ||
-            "Welcome to my store! I offer high-quality products and friendly service."}
-        </p>
+        <div className="flex-1 bg-gray-50 p-2 rounded-lg border shadow-sm text-right">
+          <h2 className="text-lg font-semibold mb-2 text-gray-800">
+            Services I Offer
+          </h2>
+          <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+            {seller?.intro ||
+              "Welcome to my store! I offer high-quality products and friendly service."}
+          </p>
+        </div>
       </div>
 
       {/* 🛍️ Seller’s Products */}
@@ -108,11 +106,13 @@ const StorePage = () => {
         <h2 className="text-xl font-semibold mb-4 text-gray-900">
           Products for Sale
         </h2>
-        {products.length > 0 ? (
+        {products.filter((item) => !item.rentable).length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map((item) => (
-              <ProductCard key={item.id} product={item} />
-            ))}
+            {products
+              .filter((item) => !item.rentable) // Filter items where isRentable is false
+              .map((item) => (
+                <ProductCard key={item.id} product={item} />
+              ))}
           </div>
         ) : (
           <p className="text-gray-500 text-sm">No products available yet.</p>
@@ -120,14 +120,37 @@ const StorePage = () => {
       </div>
 
       {/* 📦 Seller’s Lend Items */}
-      <div>
+      <div className="mb-12">
         <h2 className="text-xl font-semibold mb-4 text-gray-900">
           Items for Rent
         </h2>
+        {products.filter((item) => item.rentable).length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+            {products
+              .filter((item) => item.rentable) // Filter items where rentable is true
+              .map((item) => (
+                <ProductCard
+                  key={item.id}
+                  product={{
+                    ...item,
+                    price: item.price, // Use the original price
+                    name: `${item.name} (Per Day)`, // Append "(Per Day)" to the name
+                  }}
+                />
+              ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 text-sm">No items available for rent.</p>
+        )}
+      </div>
+
+      {/* 📦 Seller’s Lend Items */}
+      <div className="mb-12">
+        <h2 className="text-xl font-semibold mb-4 text-gray-900">Services</h2>
         {lends.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
             {lends.map((item) => (
-              <ProductCard
+              <LendCard
                 key={item.id}
                 product={{
                   ...item,

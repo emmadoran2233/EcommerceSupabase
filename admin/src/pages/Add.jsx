@@ -66,7 +66,7 @@ const Add = ({ token, user }) => {
 
       if (insertError) throw insertError
 
-      toast.success("✅ Product added successfully!")
+      toast.success("✅ Product added successfully!", {autoClose: 600})
 
       // ✅ Reset form
       setName("")

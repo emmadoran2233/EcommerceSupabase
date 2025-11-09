@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { assets } from "../assets/assets";
-const Hero = () => {
+const Carousel = () => {
   const bestRentals = [
     assets.drone_2,
     assets.robot_img,
@@ -27,7 +27,7 @@ const Hero = () => {
   useEffect(() => {
     const updateLayout = () => {
       const w = window.innerWidth;
-      const newVisible = w < 640 ? 1 : (w < 960 ? 3 : 4);
+      const newVisible = w < 640 ? 1 : w < 960 ? 4 : 6;
       setVisibleCount(newVisible);
 
       // measure viewport width and compute item width (px)
@@ -67,38 +67,23 @@ const Hero = () => {
   // item width is 100% / visibleCount (in relation to carousel viewport)
   const itemWidthPercent = 100 / visibleCount;
   const translatePercent = -(index * itemWidthPercent);
-
   return (
-    <section className="w-full max-w-7xl mx-auto px-4 py-8">
-      {/* Large hero image (highlighted) */}
-      <div className="w-full flex justify-center mb-6">
-        <div className="w-full overflow-hidden rounded-lg bg-gray-50">
-          <img
-            src={assets.hero_img}
-            alt="Featured"
-            className="block w-full max-h-[500px] mx-auto object-cover"
-          />
-        </div>
-      </div>
-
-      {/* Separator with centered text */}
+    <section className="w-full max-w-6xl mx-auto px-4">
       <div className="flex items-center justify-center gap-4 my-6">
         <div className="h-px w-20 bg-gray-300" />
-        <p className="text-center text-sm font-medium text-gray-700">
-          Shop our best rentals
-        </p>
+        <h1 className="text-center text-gray-700">Shop our best rentals</h1>
         <div className="h-px w-20 bg-gray-300" />
       </div>
 
-          {/* Carousel viewport */}
+      {/* Carousel viewport */}
       <div className="w-full flex justify-center">
-        <div className="w-full sm:w-11/12 lg:w-3/4 relative">
+        <div className="w-full relative">
           <div
             ref={viewportRef}
             className="overflow-hidden rounded-lg"
             style={{ height: "auto" }}
           >
-            {/* track */}
+            {/* Track */}
             <div
               className="flex transition-transform duration-500 ease-in-out"
               style={{
@@ -158,4 +143,4 @@ const Hero = () => {
   );
 };
 
-export default Hero;
+export default Carousel;
