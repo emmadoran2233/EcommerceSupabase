@@ -12,11 +12,12 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^7.3.4",
-    "@mui/material": "^7.3.4",
-    "@supabase/supabase-js": "^2.56.1",
+    "@mui/material": "^7.3.5",
+    "@supabase/supabase-js": "^2.57.2",
     "axios": "^1.7.4",
+    "date-fns": "^4.1.0",
     "react": "^18.3.1",
+    "react-date-range": "^2.0.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.1",
     "react-toastify": "^10.0.5"

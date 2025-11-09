@@ -1,41 +1,63 @@
 import { createContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-//import axios from 'axios'
-import { supabase } from "../supabaseClient"
+import { supabase } from "../supabaseClient";
 
 export const ShopContext = createContext();
 
 const ShopContextProvider = (props) => {
-
-    const currency = '$';
+    const currency = "$";
     const delivery_fee = 10;
-    // const backendUrl = import.meta.env.VITE_BACKEND_URL
-    const [search, setSearch] = useState('');
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
+    const [search, setSearch] = useState("");
     const [showSearch, setShowSearch] = useState(false);
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
-    const [token, setToken] = useState('');
-    const [userId, setUserId] = useState(""); 
-    const [user, setUser] = useState(null);
+    const [token, setToken] = useState("");
+    const [userId, setUserId] = useState("");
     const navigate = useNavigate();
 
+    // ✅ 改进版 addToCart：支持 rentable 商品
+    const addToCart = async (itemId, size, rentInfo = null) => {
+        const product = products.find((p) => String(p.id) === String(itemId));
 
-    const addToCart = async (itemId, size) => {
-        if (!size) {
+        if (!product) {
+            toast.error("Product not found");
+            return;
+        }
+
+        // ✅ 非租赁商品必须选 size
+        if (!product.rentable && (!size || size === "")) {
             toast.error("Select Product Size");
             return;
         }
 
-        let cartData = structuredClone(cartItems);
-
-        if (cartData[itemId]) {
-            cartData[itemId][size] = (cartData[itemId][size] || 0) + 1;
+        // ✅ 对租赁商品固定用 key 'rent'
+        let sizeKey;
+        if (product.rentable && rentInfo?.startDate && rentInfo?.endDate) {
+            const start = new Date(rentInfo.startDate).toISOString().split("T")[0];
+            const end = new Date(rentInfo.endDate).toISOString().split("T")[0];
+            sizeKey = `rent_${start}_to_${end}`; // ✅ 每个租期生成唯一 key
         } else {
-            cartData[itemId] = { [size]: 1 };
+            sizeKey = product.rentable ? "rent" : size;
+        }
+
+        let cartData = structuredClone(cartItems);
+        if (!cartData[itemId]) cartData[itemId] = {};
+
+        // ✅ 如果是租赁商品，存入租赁信息
+        if (product.rentable) {
+            cartData[itemId][sizeKey] = {
+                quantity: 1,
+                rentInfo: rentInfo || {},
+            };
+        } else {
+            cartData[itemId][sizeKey] = (cartData[itemId][sizeKey] || 0) + 1;
         }
 
         setCartItems(cartData);
+        console.log("🧩 Updated cartItems:", cartData);
 
         try {
             if (userId) {
@@ -43,9 +65,9 @@ const ShopContextProvider = (props) => {
                     .from("carts")
                     .update({ items: cartData, updated_at: new Date() })
                     .eq("user_id", userId);
-
                 if (error) throw error;
             }
+            toast.success("Added to cart!");
         } catch (err) {
             toast.error("Failed to update cart: " + err.message);
         }
@@ -55,7 +77,8 @@ const ShopContextProvider = (props) => {
         let totalCount = 0;
         for (const productId in cartItems) {
             for (const size in cartItems[productId]) {
-                const qty = cartItems[productId][size];
+                const item = cartItems[productId][size];
+                const qty = typeof item === "object" ? item.quantity : item;
                 if (qty > 0) totalCount += qty;
             }
         }
@@ -65,7 +88,11 @@ const ShopContextProvider = (props) => {
     const updateQuantity = async (itemId, size, quantity) => {
         let cartData = structuredClone(cartItems);
         if (!cartData[itemId]) cartData[itemId] = {};
-        cartData[itemId][size] = quantity;
+        if (typeof cartData[itemId][size] === "object") {
+            cartData[itemId][size].quantity = quantity;
+        } else {
+            cartData[itemId][size] = quantity;
+        }
 
         setCartItems(cartData);
 
@@ -92,9 +119,13 @@ const ShopContextProvider = (props) => {
             if (!itemInfo) continue;
 
             for (const size in cartItems[productId]) {
-                const qty = cartItems[productId][size];
-                if (qty > 0) {
-                    totalAmount += itemInfo.price * qty;
+                const item = cartItems[productId][size];
+                if (typeof item === "object" && item.rentInfo) {
+                    // ✅ 租赁商品使用 rentInfo.totalPrice
+                    totalAmount += item.rentInfo.totalPrice || 0;
+                } else {
+                    const qty = typeof item === "object" ? item.quantity : item;
+                    if (qty > 0) totalAmount += itemInfo.price * qty;
                 }
             }
         }
@@ -122,7 +153,6 @@ const ShopContextProvider = (props) => {
                 } else {
                     setCartItems(data?.items || {});
                 }
-
             }
         } catch (error) {
             toast.error(error.message);
@@ -134,83 +164,59 @@ const ShopContextProvider = (props) => {
             const { data, error } = await supabase
                 .from("products")
                 .select("*")
-                .order("created_at", { ascending: false })
+                .order("created_at", { ascending: false });
 
-            if (error) {
-                toast.error(error.message)
-            } else {
-                setProducts(data)
-            }
+            if (error) toast.error(error.message);
+            else setProducts(data);
         } catch (error) {
-            console.log(error)
-            toast.error(error.message)
+            console.log(error);
+            toast.error(error.message);
         }
-    }
-
+    };
 
     useEffect(() => {
-    getProductsData();
-  }, []);
+        getProductsData();
+    }, []);
 
-  useEffect(() => {
-    // Load existing session from Supabase
-    const initAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        const u = data.session.user;
-        setToken(data.session.access_token);
-        setUserId(u.id);
-        setUser({
-          id: u.id,
-          name: u.user_metadata?.name || "User",
-          email: u.email,
-        });
-        getUserCart(u.id);
-      }
-    };
-    initAuth();
+    useEffect(() => {
+        const storedToken = localStorage.getItem("token");
+        const storedUserId = localStorage.getItem("user_id");
 
-    // Subscribe to login/logout events
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (session?.user) {
-          setToken(session.access_token);
-          setUserId(session.user.id);
-          setUser({
-            id: session.user.id,
-            name: session.user.user_metadata?.name || "User",
-            email: session.user.email,
-          });
-          getUserCart(session.user.id);
-        } else {
-          setToken("");
-          setUserId("");
-          setUser(null);
-          setCartItems({});
+        if (storedToken) setToken(storedToken);
+        if (storedUserId) {
+            setUserId(storedUserId);
+            getUserCart(storedUserId);
         }
-      }
-    );
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
+    }, []);
 
     const value = {
-        products, currency, delivery_fee,
-        search, setSearch, showSearch, setShowSearch,
-        cartItems, addToCart, setCartItems,
-        getCartCount, updateQuantity,
-        getCartAmount, navigate,
-        setToken, token, user
-    }
+        products,
+        currency,
+        delivery_fee,
+        search,
+        setSearch,
+        showSearch,
+        setShowSearch,
+        cartItems,
+        addToCart,
+        setCartItems,
+        getCartCount,
+        updateQuantity,
+        getCartAmount,
+        navigate,
+        backendUrl,
+        setToken,
+        token,
+        setUserId,
+        userId,
+        getUserCart,
+    };
 
     return (
         <ShopContext.Provider value={value}>
             {props.children}
         </ShopContext.Provider>
-    )
-
-}
+    );
+};
 
 export default ShopContextProvider;

@@ -94,4 +94,8 @@ serve(async (req) => {
       { status: 500, headers: corsHeaders }
     );
   }
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> feature/merged-Han
