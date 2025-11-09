@@ -57,78 +57,70 @@ const PlaceOrder = () => {
         rzp.open()
     }
 
-    const onSubmitHandler = async (event) => {
+const onSubmitHandler = async (event) => {
         event.preventDefault()
         try {
 
             let orderItems = []
 
-      // ✅ Build orderItems list
-      for (const items in cartItems) {
-        for (const item in cartItems[items]) {
-          if (cartItems[items][item] > 0) {
-            const itemInfo = structuredClone(
-              products.find((product) => String(product.id) === String(items))
-            );
-            if (itemInfo) {
-              orderItems.push({
-                id: itemInfo.id,
-                name: itemInfo.name,
-                price: itemInfo.price,
-                size: item,
-                quantity: cartItems[items][item],
-                seller_id: itemInfo.seller_id, // ✅ new field
-                stock: itemInfo.stock,
-              });
+            for (const items in cartItems) {
+                for (const item in cartItems[items]) {
+                    if (cartItems[items][item] > 0) {
+                        const itemInfo = structuredClone(products.find(product => product.id === items))
+                        if (itemInfo) {
+                            itemInfo.size = item
+                            itemInfo.quantity = cartItems[items][item]
+                            orderItems.push(itemInfo)
+                        }
+                    }
+                }
             }
-          }
-        }
-      }
 
-      const randomPart = Math.floor(Math.random() * 10000)
-        .toString()
-        .padStart(4, "0");
-      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      const customOrderId = `ORD-${datePart}-${randomPart}`;
+            let orderData = {
+                address: formData,
+                items: orderItems,
+                amount: getCartAmount() + delivery_fee,
+                paymentmethod: method,
+                payment: false,
+                status: "Order Placed",
+                date: new Date().toISOString()
+            }
+            console.log("cartItems:", cartItems);
+            console.log("products:", products);
+            console.log("getCartAmount():", getCartAmount());
+            console.log("delivery_fee:", delivery_fee);
+            console.log("orderData:", orderData);
 
-      // ✅ Prepare orderData
-      let orderData = {
-        order_id: customOrderId,
-        address: formData,
-        items: orderItems,
-        amount: getCartAmount() + delivery_fee,
-        paymentmethod: method,
-        payment: false,
-        status: "Order Placed",
-        date: new Date().toISOString(),
-        //sellers: [...new Set(orderItems.map((item) => item.seller_id))], // ✅ unique sellers
-      };
 
-      // Optional: track buyer (if logged in)
-      try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData?.user?.id) {
-          orderData.buyer_id = userData.user.id;
-        }
-      } catch (err) {
-        console.warn("Could not fetch buyer info:", err);
-      }
+            switch (method) {
 
-      // ✅ Payment method flows
-      switch (method) {
-        // COD
-        case "cod": {
-          const { error } = await supabase.from("orders").insert([orderData]);
-          if (error) {
-            toast.error(error.message);
-          } else {
-            await updateStock(orderItems);
-            setCartItems({});
-            navigate("/orders");
-            toast.success("Order placed successfully!");
-          }
-          break;
-        }
+                // API Calls for COD
+                case 'cod':
+                    const { error } = await supabase.from("orders").insert([orderData])
+                    if (error) {
+                        toast.error(error.message)
+                    } else {
+                        setCartItems({})
+                        navigate('/orders')
+                        toast.success("Order placed successfully!")
+                    }
+                    // const response = await axios.post(backendUrl + '/api/order/place',orderData,{headers:{token}})
+                    // if (response.data.success) {
+                    //     setCartItems({})
+                    //     navigate('/orders')
+                    // } else {
+                    //     toast.error(response.data.message)
+                    // }
+                    break;
+
+                case 'stripe':
+                    try {
+                        const userId = localStorage.getItem("user_id");
+
+                        if (!userId) {
+                            toast.error("User not logged in — please login again!");
+                            return;
+                        }
 
                         // ✅ 插入订单并附加 user_id
                         const { data: insertedOrder, error } = await supabase

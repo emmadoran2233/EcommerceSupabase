@@ -55,10 +55,7 @@ const ShopContextProvider = (props) => {
         } else {
             cartData[itemId][sizeKey] = (cartData[itemId][sizeKey] || 0) + 1;
         }
-
         setCartItems(cartData);
-        console.log("🧩 Updated cartItems:", cartData);
-
         try {
             if (userId) {
                 const { error } = await supabase

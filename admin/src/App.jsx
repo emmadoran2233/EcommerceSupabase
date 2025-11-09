@@ -4,7 +4,6 @@ import Sidebar from "./components/Sidebar";
 import { Routes, Route } from "react-router-dom";
 import Add from "./pages/Add";
 import Lend from "./pages/Lend";
-import Lend from "./pages/Lend";
 import List from "./pages/List";
 import LendList from "./pages/LendList";
 import Orders from "./pages/Orders";

@@ -76,15 +76,15 @@ const Cart = () => {
                             Rent Date:{" "}
                             {new Date(
                               item.rentInfo.startDate
-                            ).toLocaleDateString()}{" "}
-                            →{" "}
+                            ).toLocaleDateString()}
+                            →
                             {new Date(
                               item.rentInfo.endDate
                             ).toLocaleDateString()}
                           </p>
                           <p>
                              Rent Fee: $
-                            {item.rentInfo.rentFee.toFixed(2)}
+                            {item?.rentInfo?.rentFee?.toFixed(2) || 'Error Calculating'}
                           </p>
                           <p>
                             Rent Deposit: ${item.rentInfo.deposit.toFixed(2)}
