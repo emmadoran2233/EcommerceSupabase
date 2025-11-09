@@ -10,6 +10,7 @@ import Orders from "./pages/Orders";
 import Inventory from "./pages/Inventory";
 import BannerControl from "./pages/BannerControl";
 import Login from "./components/Login";
+import EditStore from "./pages/EditStore";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { supabase } from "./supabaseClient"; // ✅ Supabase client
@@ -111,6 +112,7 @@ const App = () => {
                   path="/banner"
                   element={<BannerControl token={token} user={user} />}
                 />
+                <Route path="/edit-store" element={<EditStore user={user} />} />
               </Routes>
             </div>
           </div>
