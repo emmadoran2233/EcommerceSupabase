@@ -5,7 +5,6 @@ import { toast } from "react-toastify";
 const Inventory = ({ user }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [toggleLoadingId, setToggleLoadingId] = useState(null);
 
   // ✅ Fetch only products for this seller
   const fetchProducts = async () => {
@@ -56,82 +55,57 @@ const Inventory = ({ user }) => {
     }
   };
 
-  // ✅ Toggle customizable
-  const toggleCustomizable = async (id, value) => {
-    setToggleLoadingId(id);
-    const { error } = await supabase
-      .from("products")
-      .update({ is_customizable: value })
-      .eq("id", id);
-
-    if (error) {
-      alert("Failed to update customizable: " + error.message);
-    } else {
-      await fetchProducts(); // refresh list
-    }
-    setToggleLoadingId(null);
-  };
-
   return (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold mb-6">Inventory Management</h1>
-    <table className="w-full border text-left">
-      <thead>
-        <tr className="bg-gray-200">
-          <th className="p-2 border">Product</th>
-          <th className="p-2 border">Price</th>
-          <th className="p-2 border">Stock</th>
-          <th className="p-2 border">Update Stock</th>
-          <th className="p-2 border text-center">Customizable</th>
-        </tr>
-      </thead>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6">Inventory Management</h1>
 
-      <tbody>
-        {products.map((p) => (
-          <tr key={p.id}>
-            <td className="p-2 border">{p.name}</td>
-            <td className="p-2 border">${p.price}</td>
-            <td className="p-2 border">{p.stock}</td>
-
-            <td className="p-2 border">
-              <input
-                type="number"
-                min="0"
-                defaultValue={p.stock}
-                onChange={(e) => (p.newStock = e.target.value)}
-                className="border p-1 w-20"
-              />
-              <button
-                disabled={loading}
-                onClick={() =>
-                  updateStock(p.id, parseInt(p.newStock || p.stock))
-                }
-                className={`ml-2 px-3 py-1 rounded text-sm ${
-                  loading
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                {loading ? "Saving..." : "Save"}
-              </button>
-            </td>
-
-            <td className="p-2 border text-center">
-              <input
-                type="checkbox"
-                checked={!!p.is_customizable}
-                disabled={toggleLoadingId === p.id}
-                onChange={() =>
-                  toggleCustomizable(p.id, !p.is_customizable)
-                }
-              />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
+      {products.length === 0 ? (
+        <p className="text-gray-500">No products found for this seller.</p>
+      ) : (
+        <table className="w-full border text-left">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="p-2 border">Product</th>
+              <th className="p-2 border">Price</th>
+              <th className="p-2 border">Stock</th>
+              <th className="p-2 border">Update Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => (
+              <tr key={p.id}>
+                <td className="p-2 border">{p.name}</td>
+                <td className="p-2 border">${p.price}</td>
+                <td className="p-2 border">{p.stock}</td>
+                <td className="p-2 border">
+                  <input
+                    type="number"
+                    min="0"
+                    defaultValue={p.stock}
+                    onChange={(e) => (p.newStock = e.target.value)}
+                    className="border p-1 w-20"
+                  />
+                  <button
+                    disabled={loading}
+                    onClick={() =>
+                      updateStock(p.id, parseInt(p.newStock || p.stock))
+                    }
+                    className={`ml-2 px-3 py-1 rounded text-sm ${
+                      loading
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                    }`}
+                  >
+                    {loading ? "Saving..." : "Save"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
 };
 
 export default Inventory;

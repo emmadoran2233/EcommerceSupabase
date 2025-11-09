@@ -29,8 +29,6 @@ const Orders = () => {
         items: order.items || []
       }));
       setOrderData(formattedOrders);
-
-      setOrderData(allOrdersItem)
     } catch (error) {
       console.error('🔥 loadOrderData error:', error)
     }
