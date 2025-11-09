@@ -8,6 +8,21 @@ const Cart = () => {
   const { products, currency, cartItems, updateQuantity, navigate } =
     useContext(ShopContext);
   const [cartData, setCartData] = useState([]);
+  const toNumber = (v) => {
+    if (v == null) return 0;
+    if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+    if (typeof v === "string") {
+      const cleaned = v.replace(/[^\d.-]/g, "");
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : 0;
+    }
+    return 0;
+  };
+
+  const fmt = (v) => {
+    const n = toNumber(v);
+    return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+  };
 
   useEffect(() => {
     if (products.length > 0) {
@@ -73,7 +88,7 @@ const Cart = () => {
                       {item.rentInfo ? (
                         <div className="text-sm text-gray-500 mt-2">
                           <p>
-                            Rent Date:{" "}
+                            Rent Date:
                             {new Date(
                               item.rentInfo.startDate
                             ).toLocaleDateString()}
@@ -82,23 +97,19 @@ const Cart = () => {
                               item.rentInfo.endDate
                             ).toLocaleDateString()}
                           </p>
+                          <p>Rent Fee: ${fmt(item.rentInfo.rentFee)}</p>
                           <p>
-                             Rent Fee: $
-                            {item?.rentInfo?.rentFee?.toFixed(2) || 'Error Calculating'}
-                          </p>
-                          <p>
-                            Rent Deposit: ${item.rentInfo.deposit.toFixed(2)}
+                            Rent Deposit: ${fmt(item.rentInfo.deposit)}
                           </p>
                           <img
-                              onClick={() =>
-                                updateQuantity(item.id, item.size, 0)
-                              }
-                              src={assets.bin_icon}
-                              alt="delete"
-                              className="w-5 cursor-pointer hover:opacity-60 transition"
-                            />
-                          <p className="text-xs text-gray-400 mt-1">
-                          </p>
+                            onClick={() =>
+                              updateQuantity(item.id, item.size, 0)
+                            }
+                            src={assets.bin_icon}
+                            alt="delete"
+                            className="w-5 cursor-pointer hover:opacity-60 transition"
+                          />
+                          <p className="text-xs text-gray-400 mt-1"></p>
                         </div>
                       ) : (
                         // ✅ 普通商品显示 size / quantity
@@ -137,8 +148,8 @@ const Cart = () => {
                   <div className="flex items-center justify-end font-medium text-sm">
                     {currency}
                     {item.rentInfo
-                      ? item.rentInfo.totalPrice.toFixed(2)
-                      : (productData.price * item.quantity).toFixed(2)}
+                      ? fmt(item.rentInfo.totalPrice)
+                      : fmt((productData.price * item.quantity))}
                   </div>
                 </div>
               );

@@ -25,16 +25,15 @@ const RentCalendar = ({ dailyRate, productPrice, onRentChange }) => {
     if (start && end) {
       const diff = differenceInCalendarDays(end, start) + 1;
       const rentFeeCalc = diff * dailyRate;
-      const depositCalc = Math.max(productPrice - rentFeeCalc, 0); // ✅ 商品原价 − rentFee，最低为0
-      const totalCalc =
-        rentFeeCalc >= productPrice ? rentFeeCalc : rentFeeCalc + depositCalc;
+      const depositCalc = Math.max(productPrice - rentFeeCalc, 0);  // ✅ 商品原价 − rentFee，最低为0
+      const totalCalc = rentFeeCalc >= productPrice ? rentFeeCalc : rentFeeCalc + depositCalc;
 
       setDays(diff);
       setRentFee(rentFeeCalc);
       setDeposit(depositCalc);
       setFinalTotal(totalCalc);
 
-      const payload = {
+         const payload = {
         startDate: start,
         endDate: end,
         days: diff,
@@ -80,9 +79,8 @@ const RentCalendar = ({ dailyRate, productPrice, onRentChange }) => {
 
       {days > 0 ? (
         <div className="mt-3 text-sm text-gray-700">
-          <p>
-            Duration: {days} day{days > 1 ? "s" : ""}
-          </p>
+          <p>Duration: {days} day{days > 1 ? "s" : ""}</p>
+          <p> Rent Rate: $20/day</p>
           <p> Rent Fee: ${rentFee.toFixed(2)}</p>
           <p> Deposit: ${deposit.toFixed(2)}</p>
           <p className="font-semibold text-indigo-600 mt-1">

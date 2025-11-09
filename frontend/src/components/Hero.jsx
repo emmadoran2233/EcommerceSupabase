@@ -17,7 +17,7 @@ const Hero = () => {
     assets.electricGenerator,
   ].filter(Boolean);
   const [index, setIndex] = useState(0);
-  const [visibleCount, setVisibleCount] = useState(3);
+  const [visibleCount, setVisibleCount] = useState(4);
   const [itemWidth, setItemWidth] = useState(0); // how many images visible at once
   const autoplay = true;
   const intervalMs = 3500;
@@ -27,7 +27,7 @@ const Hero = () => {
   useEffect(() => {
     const updateLayout = () => {
       const w = window.innerWidth;
-      const newVisible = w < 640 ? 1 : (w < 960 ? 2 : 3);
+      const newVisible = w < 640 ? 1 : (w < 960 ? 3 : 4);
       setVisibleCount(newVisible);
 
       // measure viewport width and compute item width (px)
@@ -72,11 +72,11 @@ const Hero = () => {
     <section className="w-full max-w-7xl mx-auto px-4 py-8">
       {/* Large hero image (highlighted) */}
       <div className="w-full flex justify-center mb-6">
-        <div className="w-full sm:w-11/12 lg:w-3/4 overflow-hidden rounded-lg bg-gray-50">
+        <div className="w-full overflow-hidden rounded-lg bg-gray-50">
           <img
             src={assets.hero_img}
             alt="Featured"
-            className="block w-full max-h-[460px] mx-auto object-contain"
+            className="block w-full max-h-[500px] mx-auto object-cover"
           />
         </div>
       </div>
@@ -112,7 +112,7 @@ const Hero = () => {
                   className="flex-shrink-0 p-1"
                   style={{ width: `${itemWidth}px` }}
                 >
-                  <div className="w-full h-56 sm:h-72 md:h-96 overflow-hidden rounded-lg bg-white">
+                  <div className="w-full h-48 sm:h-48 md:h-56 overflow-hidden rounded-lg bg-white">
                     <img
                       src={src}
                       alt={`Best rental ${i + 1}`}
