@@ -138,27 +138,44 @@ const Product = () => {
         {/* -------- Product Info ---------- */}
         <div className="flex-1">
           <h1 className="font-medium text-2xl mt-2">{productData.name}</h1>
-          <div className=" flex items-center gap-1 mt-2">
-            <img src={assets.star_icon} alt="" className="w-3 5" />
-            <img src={assets.star_icon} alt="" className="w-3 5" />
-            <img src={assets.star_icon} alt="" className="w-3 5" />
-            <img src={assets.star_icon} alt="" className="w-3 5" />
-            <img src={assets.star_dull_icon} alt="" className="w-3 5" />
+
+          {/* ✅ Simple Seller Link */}
+          {productData.seller_id && (
+            <p className="text-blue-600 text-sm mt-1">
+              <a
+                href={`/store/${productData.seller_id}`}
+                className="underline hover:text-blue-800 font-medium"
+              >
+                View Store
+              </a>
+            </p>
+          )}
+
+          <div className="flex items-center gap-1 mt-2">
+            <img src={assets.star_icon} alt="" className="w-3.5" />
+            <img src={assets.star_icon} alt="" className="w-3.5" />
+            <img src={assets.star_icon} alt="" className="w-3.5" />
+            <img src={assets.star_icon} alt="" className="w-3.5" />
+            <img src={assets.star_dull_icon} alt="" className="w-3.5" />
             <p className="pl-2">({reviews.length})</p>
           </div>
+
           <p className="mt-5 text-3xl font-medium">
             {currency}
             {productData.price}
           </p>
+
           {/* ✅ Stock display */}
           <p className="mt-2 text-sm text-gray-500">
             {productData.stock > 0
               ? `${productData.stock} in stock`
-              : "Out of stock"}
+              : 'Out of stock'}
           </p>
+
           <p className="mt-5 text-gray-500 md:w-4/5">
             {productData.description}
           </p>
+
           <div className="flex flex-col gap-4 my-8">
             <p>Select Size</p>
             <div className="flex gap-2">
@@ -175,18 +192,20 @@ const Product = () => {
               ))}
             </div>
           </div>
+
           {/* ✅ Add to Cart with stock check */}
           <button
             onClick={() => addToCart(productData.id, size)}
             disabled={productData.stock <= 0}
             className={`px-8 py-3 text-sm ${
               productData.stock <= 0
-                ? "bg-gray-400 text-white cursor-not-allowed"
-                : "bg-black text-white active:bg-gray-700"
+                ? 'bg-gray-400 text-white cursor-not-allowed'
+                : 'bg-black text-white active:bg-gray-700'
             }`}
           >
-            {productData.stock <= 0 ? "OUT OF STOCK" : "ADD TO CART"}
+            {productData.stock <= 0 ? 'OUT OF STOCK' : 'ADD TO CART'}
           </button>
+
           <hr className="mt-8 sm:w-4/5" />
           <div className="text-sm text-gray-500 mt-5 flex flex-col gap-1">
             <p>100% Original product.</p>
@@ -205,9 +224,7 @@ const Product = () => {
 
         {/* Reviews list */}
         <div className="flex flex-col gap-4 border px-6 py-6 text-sm text-gray-500">
-          {reviews.length === 0 && (
-            <p>No reviews yet. Be the first to comment!</p>
-          )}
+          {reviews.length === 0 && <p>No reviews yet. Be the first to comment!</p>}
           {reviews.map((review) => (
             <div
               key={review.id}
@@ -246,7 +263,6 @@ const Product = () => {
                 )}
               </div>
 
-              {/* Only for the logged-in user's review */}
               {review.user_id === user?.id &&
                 editingReviewId !== review.id && (
                   <div className="flex gap-2">
@@ -271,12 +287,8 @@ const Product = () => {
           ))}
         </div>
 
-        {/* New review form (only if user hasn't reviewed yet) */}
         {!userReview && (
-          <form
-            onSubmit={handleSubmitReview}
-            className="mt-4 flex flex-col gap-2"
-          >
+          <form onSubmit={handleSubmitReview} className="mt-4 flex flex-col gap-2">
             <textarea
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
@@ -313,4 +325,3 @@ const Product = () => {
 };
 
 export default Product;
-

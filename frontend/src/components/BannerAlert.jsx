@@ -36,6 +36,7 @@ const BannerAlert = () => {
   return (
     <Alert
       severity="info"
+      icon={false}
       sx={{
         mb: 1,
         borderRadius: 0,

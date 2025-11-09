@@ -103,6 +103,13 @@ const Sidebar = () => {
           <p className="hidden md:block">Edit Banner</p>
         </NavLink>
 
+        <NavLink
+          className="flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l"
+          to="/edit-store"
+        >
+          <img className='w-5 h-5' src={assets.order_icon} alt="store" />
+          <p className="hidden md:block">Edit Store Info</p>
+        </NavLink>
       </div>
     </div>
   );
