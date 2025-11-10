@@ -8,7 +8,11 @@ const Login = ({ setToken }) => {
   const [password, setPassword] = useState("");
   const [currentState, setCurrentState] = useState("Login");
   const navigate = useNavigate();
-  const redirectUrl =process.env.NODE_ENV === "development"? "http://localhost:5174" : "https://admin.reshareloop.com";
+  const redirectUrl =
+  (typeof window !== "undefined" && window.location?.origin?.trim()) ||
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:5174"
+    : "https://admin.reshareloop.com");
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     try {
