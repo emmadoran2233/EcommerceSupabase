@@ -5,7 +5,7 @@ const Carousel = () => {
     assets.drone_2,
     assets.robot_img,
     assets.chanel,
-    assets.iphone17Pro_2,
+    assets.iphone17pro_2,
     assets.partyTent,
     assets.radon_detector,
     assets.rolex,

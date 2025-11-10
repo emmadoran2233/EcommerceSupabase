@@ -8,7 +8,10 @@ const Login = () => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
-
+  const redirectUrl =
+    process.env.NODE_ENV === "development"
+      ? "http://localhost:5173"
+      : "https://www.reshareloop.com";
   const onSubmitHandler = async (event) => {
     event.preventDefault();
     try {
@@ -94,7 +97,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin, 
+          redirectTo: redirectUrl,
           queryParams: { access_type: "offline", prompt: "consent" }, // optional
         },
       });
@@ -113,6 +116,7 @@ const Login = () => {
       if (session) {
         const sessionToken = session.access_token;
         const userId = session.user?.id;
+        console.log('session found:', session);
         if (sessionToken) {
           setToken(sessionToken);
           localStorage.setItem("token", sessionToken);
