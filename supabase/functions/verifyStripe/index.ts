@@ -12,6 +12,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "https://www.reshareloop.com",
+  "https://ecommerce-supabase-wine.vercel.app/",
+  "https://vercel.com/emmadoran2233s-projects/ecommerce-supabase/7rJg9F2cMKHv5Lgdn1rgrWWsXHMU",
 ];
 
 serve(async (req) => {
@@ -25,17 +27,12 @@ serve(async (req) => {
       },
     });
   }
-  const requestOrigin = req.headers.get("origin");
-  const baseUrl = ALLOWED_ORIGINS.includes(requestOrigin || "")
-    ? requestOrigin
-    : Deno.env.get("FRONTEND_URL") || "https://www.reshareloop.com";
-
   const bodyText = await req.text();
   console.log("verifyStripe raw body:", bodyText);
 
   let parsed;
   try {
-    parsed = JSON.parse(bodyText);
+    parsed = bodyText ? JSON.parse(bodyText) : {};
   } catch (e) {
     console.error("Invalid JSON:", bodyText);
     return new Response(
@@ -46,7 +43,24 @@ serve(async (req) => {
       }
     );
   }
+  const headerOrigin = req.headers.get("origin")?.trim() || null;
+  const bodyOrigin = (parsed.origin && String(parsed.origin).trim()) || null;
+  const envFrontend = (Deno.env.get("FRONTEND_URL") || "").trim() || null;
+  const defaultProd = "https://www.reshareloop.com";
 
+  console.log(
+    "headerOrigin:",
+    headerOrigin,
+    "bodyOrigin:",
+    bodyOrigin,
+    "FRONTEND_URL:",
+    envFrontend
+  );
+
+  const candidate = headerOrigin || bodyOrigin || envFrontend || defaultProd;
+  const baseUrl = ALLOWED_ORIGINS.includes(candidate) ? candidate : defaultProd;
+
+  console.log("Using baseUrl for stripe success/cancel:", baseUrl);
   const { orderId, amount } = parsed;
   console.log("verifyStripe parsed:", { orderId, amount });
 
@@ -68,7 +82,7 @@ serve(async (req) => {
         {
           price_data: {
             currency: "usd",
-            product_data: { name: "Emazing Store Order" },
+            product_data: { name: "ReShareLoop" },
             unit_amount: Math.round(amount * 100),
           },
           quantity: 1,
