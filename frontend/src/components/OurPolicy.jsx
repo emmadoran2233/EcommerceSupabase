@@ -4,7 +4,7 @@ import { assets } from "../assets/assets";
 const OurPolicy = () => {
   return (
     <section>
-      <div className="w-full flex justify-center mb-6">
+      <div className="w-full flex justify-center mb-3">
         <div className="w-full overflow-hidden rounded-lg bg-gray-50">
           <img
             src={assets.howReShareLoop}
@@ -13,7 +13,7 @@ const OurPolicy = () => {
           />
         </div>
       </div>
-      <div className="flex flex-col sm:flex-row justify-around gap-12 sm:gap-2 text-center py-20 text-xs sm:text-sm md:text-base text-gray-700">
+      <div className="flex flex-col sm:flex-row justify-around gap-6 sm:gap-2 text-center py-20 text-xs sm:text-sm md:text-base text-gray-700">
         <div>
           <img src={assets.exchange_icon} className="w-12 m-auto mb-5" alt="" />
           <p className=" font-semibold">Easy Exchange Policy</p>

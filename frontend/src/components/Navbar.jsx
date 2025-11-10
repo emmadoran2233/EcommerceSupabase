@@ -79,8 +79,8 @@ const Navbar = () => {
           />
           {/* Dropdown Menu */}
           {token && (
-            <div className="group-hover:block hidden absolute dropdown-menu right-0 pt-4">
-              <div className="flex flex-col gap-2 w-36 py-3 px-5  bg-slate-100 text-gray-500 rounded">
+            <div className="group-hover:block hidden absolute dropdown-menu right-0 pt-1">
+              <div className="flex flex-col gap-2 w-36 px-5 py-1 bg-slate-100 text-gray-500 rounded z-10">
                 <p
                   onClick={() => navigate("/profile")}
                   className="cursor-pointer hover:text-black"
