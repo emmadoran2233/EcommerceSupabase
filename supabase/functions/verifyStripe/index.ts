@@ -10,7 +10,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const ALLOWED_ORIGINS = [
-  // "http://localhost:5173",
+  "http://localhost:5173",
   "https://www.reshareloop.com",
   "https://ecommerce-supabase-wine.vercel.app/",
   "https://vercel.com/emmadoran2233s-projects/ecommerce-supabase/7rJg9F2cMKHv5Lgdn1rgrWWsXHMU",
@@ -91,14 +91,27 @@ serve(async (req) => {
       mode: "payment",
       success_url: `${baseUrl}/verify?success=true&orderId=${orderId}`,
       cancel_url: `${baseUrl}/verify?success=false&orderId=${orderId}`,
-
       metadata: {
         orderId: String(orderId),
       },
     });
 
     console.log("Created Stripe session with metadata:", session.metadata);
+    console.log("Created session id:", session.id, "session.url:", session.url);
 
+    // retrieve expanded session to see product name Stripe stored
+    const sessionFull = await stripe.checkout.sessions.retrieve(session.id, {
+      expand: ["line_items.data.price.product"],
+    });
+    console.log(
+      "Expanded line items:",
+      JSON.stringify(
+        sessionFull.line_items?.data.map((li) => ({
+          name: (li.price?.product as any)?.name || li.description,
+          unit_amount: li.price?.unit_amount || li.amount_subtotal,
+        }))
+      )
+    );
     return new Response(
       JSON.stringify({ success: true, session_url: session.url }),
       {
