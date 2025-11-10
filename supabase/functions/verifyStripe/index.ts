@@ -10,7 +10,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const ALLOWED_ORIGINS = [
-  "http://localhost:5173",
+  // "http://localhost:5173",
   "https://www.reshareloop.com",
   "https://ecommerce-supabase-wine.vercel.app/",
   "https://vercel.com/emmadoran2233s-projects/ecommerce-supabase/7rJg9F2cMKHv5Lgdn1rgrWWsXHMU",
