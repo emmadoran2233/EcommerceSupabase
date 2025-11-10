@@ -3,22 +3,25 @@ import { ShopContext } from '../context/ShopContext'
 import Title from './Title';
 import ProductItem from './ProductItem';
 
-const LatestCollection = () => {
+const ProductForSell = () => {
 
     const { products } = useContext(ShopContext);
     const [latestProducts,setLatestProducts] = useState([]);
 
-    useEffect(()=>{
-        setLatestProducts(products.slice(0,10));
-    },[products])
+    useEffect(() => {
+    const filtered = products
+      .filter((item) => item.rentable === false)
+      .slice(0, 10); 
+
+    setLatestProducts(filtered);
+  }, [products]);
 
   return (
     <div className='my-10'>
-      <div className='text-center py-8 text-3xl'>
-          <Title text1={'LATEST'} text2={'COLLECTIONS'} />
+      <div className='text-center py-8 text-2xl'>
+          <Title text1={'PRODUCTS FOR'} text2={'SELL'} />
           <p className='w-3/4 m-auto text-xs sm:text-sm md:text-base text-gray-600'>
-          Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the.
-          </p>
+      Everything Deserves Another Round </p>
       </div>
 
       {/* Rendering Products */}
@@ -33,4 +36,4 @@ const LatestCollection = () => {
   )
 }
 
-export default LatestCollection
+export default ProductForSell

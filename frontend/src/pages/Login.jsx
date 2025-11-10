@@ -31,9 +31,9 @@ const Login = () => {
 
         if (userId) {
           localStorage.setItem("user_id", userId);
-          console.log("✅ user_id saved:", userId);
+          console.log("user_id saved:", userId);
         } else {
-          console.warn("⚠️ user_id missing in signUp:", data);
+          console.warn("user_id missing in signUp:", data);
         }
 
         if (accessToken) {
@@ -43,12 +43,10 @@ const Login = () => {
 
         toast.success("Account created successfully!");
       } else {
-        // 🟦 登录逻辑
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        console.log("🟣 signIn data:", data);
 
         if (error) {
           toast.error(error.message);
@@ -96,7 +94,7 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin, // e.g. http://localhost:5173
+          redirectTo: window.location.origin, 
           queryParams: { access_type: "offline", prompt: "consent" }, // optional
         },
       });
