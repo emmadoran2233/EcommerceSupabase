@@ -68,7 +68,7 @@ serve(async (req) => {
         {
           price_data: {
             currency: "usd",
-            product_data: { name: "ReShareLoop Order" },
+            product_data: { name: "ReShareLoop Google Pay" },
             unit_amount: Math.round(amount * 100),
           },
           quantity: 1,
