@@ -27,52 +27,38 @@ serve(async (req) => {
       },
     });
   }
-  const bodyText = await req.text();
-  console.log("verifyStripe raw body:", bodyText);
 
-  let parsed;
+  const bodyText = await req.text();
+  let parsed: any = {};
   try {
     parsed = bodyText ? JSON.parse(bodyText) : {};
   } catch (e) {
-    console.error("Invalid JSON:", bodyText);
-    return new Response(
-      JSON.stringify({ success: false, error: "Invalid JSON body" }),
-      {
-        status: 400,
-        headers: { "Access-Control-Allow-Origin": "*" },
-      }
-    );
+    console.error("Invalid JSON body:", bodyText);
+    return new Response(JSON.stringify({ success: false, error: "Invalid JSON" }), {
+      status: 400,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
   }
+
   const headerOrigin = req.headers.get("origin")?.trim() || null;
-  const bodyOrigin = (parsed.origin && String(parsed.origin).trim()) || null;
+  const bodyOrigin = parsed.origin ? String(parsed.origin).trim() : null;
   const envFrontend = (Deno.env.get("FRONTEND_URL") || "").trim() || null;
   const defaultProd = "https://www.reshareloop.com";
 
-  console.log(
-    "headerOrigin:",
-    headerOrigin,
-    "bodyOrigin:",
-    bodyOrigin,
-    "FRONTEND_URL:",
-    envFrontend
-  );
+  console.log("headerOrigin:", headerOrigin, "bodyOrigin:", bodyOrigin, "FRONTEND_URL:", envFrontend);
 
   const candidate = headerOrigin || bodyOrigin || envFrontend || defaultProd;
   const baseUrl = ALLOWED_ORIGINS.includes(candidate) ? candidate : defaultProd;
 
-  console.log("Using baseUrl for stripe success/cancel:", baseUrl);
-  const { orderId, amount } = parsed;
-  console.log("verifyStripe parsed:", { orderId, amount });
+  console.log("Using baseUrl for Stripe:", baseUrl);
 
+  const { orderId, amount } = parsed;
   if (!orderId || !amount) {
-    console.error("Missing orderId or amount in request:", parsed);
-    return new Response(
-      JSON.stringify({ success: false, error: "Missing orderId or amount" }),
-      {
-        status: 400,
-        headers: { "Access-Control-Allow-Origin": "*" },
-      }
-    );
+    console.error("Missing orderId or amount:", parsed);
+    return new Response(JSON.stringify({ success: false, error: "Missing orderId or amount" }), {
+      status: 400,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
   }
 
   try {
@@ -82,7 +68,7 @@ serve(async (req) => {
         {
           price_data: {
             currency: "usd",
-            product_data: { name: "ReShareLoop" },
+            product_data: { name: "ReShareLoop Order" },
             unit_amount: Math.round(amount * 100),
           },
           quantity: 1,
@@ -91,33 +77,30 @@ serve(async (req) => {
       mode: "payment",
       success_url: `${baseUrl}/verify?success=true&orderId=${orderId}`,
       cancel_url: `${baseUrl}/verify?success=false&orderId=${orderId}`,
-
       metadata: {
         orderId: String(orderId),
+        method: "googlepay",
       },
     });
 
-    console.log("Created Stripe session with metadata:", session.metadata);
+    console.log("Stripe session created:", {
+      session_url: session.url,
+      success_url: session.success_url,
+      cancel_url: session.cancel_url,
+    });
 
-    return new Response(
-      JSON.stringify({ success: true, session_url: session.url }),
-      {
-        status: 200,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Headers":
-            "authorization, x-client-info, apikey, content-type",
-        },
-      }
-    );
-  } catch (err) {
-    console.error("Stripe Error:", err.message, "raw body:", bodyText);
-    return new Response(
-      JSON.stringify({ success: false, error: err.message }),
-      {
-        status: 500,
-        headers: { "Access-Control-Allow-Origin": "*" },
-      }
-    );
+    return new Response(JSON.stringify({ success: true, session_url: session.url }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  } catch (err: any) {
+    console.error("Stripe error:", err);
+    return new Response(JSON.stringify({ success: false, error: err?.message || String(err) }), {
+      status: 500,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
   }
 });
