@@ -9,7 +9,7 @@ const Login = ({ setToken }) => {
   const [currentState, setCurrentState] = useState("Login");
   const navigate = useNavigate();
   const redirectUrl =
-  (typeof window !== "undefined" && window.location?.origin?.trim()) ||
+  (typeof window !== "undefined" && String(window.location?.origin || "").trim()) ||
   (process.env.NODE_ENV === "development"
     ? "http://localhost:5174"
     : "https://admin.reshareloop.com");
