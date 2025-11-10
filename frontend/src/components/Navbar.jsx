@@ -6,33 +6,8 @@ import { supabase } from "../supabaseClient";
 const Navbar = () => {
   const [visible, setVisible] = useState(false);
 
-  const {
-    setShowSearch,
-    getCartCount,
-    navigate,
-    token,
-    setToken,
-    setCartItems,
-  } = useContext(ShopContext);
-
-  const logout = async () => {
-    try {
-      // Clear Supabase session
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error("Logout Error:", error.message);
-        return;
-      }
-
-      // Clear local storage and app state
-      localStorage.removeItem("token");
-      setToken("");
-      setCartItems({});
-      navigate("/login");
-    } catch (err) {
-      console.error("Logout Failed:", err.message);
-    }
-  };
+  const { setShowSearch, getCartCount, navigate, token, logout } =
+    useContext(ShopContext);
 
   return (
     <div className="flex items-center justify-between py-3 font-medium">
@@ -93,7 +68,10 @@ const Navbar = () => {
                 >
                   Orders
                 </p>
-                <p onClick={logout} className="cursor-pointer hover:text-black">
+                <p
+                  onClick={() => logout(navigate)}
+                  className="cursor-pointer hover:text-black"
+                >
                   Logout
                 </p>
               </div>

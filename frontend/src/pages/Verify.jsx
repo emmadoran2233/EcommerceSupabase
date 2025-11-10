@@ -1,48 +1,48 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { ShopContext } from '../context/ShopContext';
-import { useSearchParams } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import axios from 'axios';
+import React, { useContext, useEffect, useState } from "react";
+import { ShopContext } from "../context/ShopContext";
+import { useSearchParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import axios from "axios";
 
 const Verify = () => {
   const { navigate, setCartItems } = useContext(ShopContext);
   const [searchParams] = useSearchParams();
 
-  const success = searchParams.get('success');
-  const orderId = searchParams.get('orderId');
+  const success = searchParams.get("success");
+  const orderId = searchParams.get("orderId");
   const [loading, setLoading] = useState(true);
-
+  console.log("Environment:", import.meta.env.MODE);
+  console.log("Supabase URL:", import.meta.env.VITE_SUPABASE_URL);
   const checkOrderStatus = async () => {
     try {
       if (!orderId) {
         toast.error("Missing orderId in URL");
-        navigate('/cart');
+        navigate("/cart");
         return;
       }
 
       const response = await axios.post(
-        import.meta.env.VITE_SUPABASE_URL + '/functions/v1/checkOrderStatus',
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/checkOrderStatus`,
         { orderId },
         {
           headers: {
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         }
       );
-
+      console.log("checkOrderStatus response:", response.data);
       if (response.data.success && response.data.order?.payment) {
         setCartItems({});
-        navigate('/orders');
+        navigate("/orders");
       } else {
         toast.error("Payment not completed");
-        navigate('/cart');
+        navigate("/cart");
       }
-
     } catch (error) {
       console.error("Verify error:", error);
       toast.error(error.message || "Verification failed");
-      navigate('/cart');
+      navigate("/cart");
     } finally {
       setLoading(false);
     }
