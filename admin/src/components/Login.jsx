@@ -5,12 +5,12 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 const Login = ({ setToken }) => {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState(""); //['admin@example.com', 'Asdfg12345']
+  const [password, setPassword] = useState("");
   const [currentState, setCurrentState] = useState("Login");
   const navigate = useNavigate();
+  const redirectUrl =process.env.NODE_ENV === "development"? "http://localhost:5174" : "https://admin.reshareloop.com";
   const onSubmitHandler = async (e) => {
     e.preventDefault();
-
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -36,7 +36,7 @@ const Login = ({ setToken }) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin, // e.g. http://localhost:5173
+          redirectTo: redirectUrl,
           queryParams: { access_type: "offline", prompt: "consent" }, // optional
         },
       });
@@ -103,7 +103,6 @@ const Login = ({ setToken }) => {
             Login with Email
           </button>
 
-          
           {currentState === "Login" && (
             <>
               <div className="flex items-center gap-2 w-full mt-4">

@@ -74,7 +74,7 @@ import razorpay_logo from './razorpay_logo.png'
 import stripe_logo from './stripe_logo.png'
 import googlepay_logo from './googlepay_logo.png';
 import cross_icon from './cross_icon.png'
-import iphone17Pro_2 from './iphone17Pro_2.png';
+import iphone17pro_2 from './iphone17pro_2.png';
 import robot_img from './robot_img.png';
 import drone_2 from './drone_2.png';
 import camera_1 from './camera_1.png';
@@ -107,7 +107,7 @@ export const assets = {
     stripe_logo,
     googlepay_logo,
     cross_icon,
-    iphone17Pro_2,
+    iphone17pro_2,
     robot_img,
     drone_2,
     camera_1,
