@@ -9,9 +9,10 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const redirectUrl =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:5173"
-      : "https://www.reshareloop.com";
+  (typeof window !== "undefined" && window.location?.origin?.trim()) ||
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:5173"
+    : "https://www.reshareloop.com");
   const onSubmitHandler = async (event) => {
     event.preventDefault();
     try {

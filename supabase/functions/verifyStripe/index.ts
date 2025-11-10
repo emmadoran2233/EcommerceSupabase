@@ -9,7 +9,7 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const const frontendUrl = Deno.env.get("FRONTEND_URL") ?? "http://localhost:5173";
+const frontendUrl = Deno.env.get("FRONTEND_URL") ?? "http://localhost:5173";
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
@@ -62,7 +62,7 @@ serve(async (req) => {
         {
           price_data: {
             currency: "usd",
-            product_data: { name: "Save the world ReShareLoop" },
+            product_data: { name: "Save the planet ReShareLoop" },
             unit_amount: Math.round(amount * 100),
           },
           quantity: 1,

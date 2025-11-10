@@ -9,7 +9,7 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
+const frontendUrl = (Deno.env.get("FRONTEND_URL") || "http://localhost:5173").replace(/\/$/, "");
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
@@ -53,15 +53,15 @@ serve(async (req) => {
         {
           price_data: {
             currency: "usd",
-            product_data: { name: "Emazing Store Order (Google Pay)" },
+            product_data: { name: "Earn Share Repeat (Google Pay)" },
             unit_amount: Math.round(amount * 100),
           },
           quantity: 1,
         },
       ],
       mode: "payment",
-      success_url: `http://localhost:5173/verify?success=true&orderId=${orderId}`,
-      cancel_url: `http://localhost:5173/verify?success=false&orderId=${orderId}`,
+      success_url: `${frontendUrl}/verify?success=true&orderId=${orderId}`,
+      cancel_url: `${frontendUrl}/verify?success=false&orderId=${orderId}`,
       metadata: {
         orderId: String(orderId),
         method: "googlepay", 
