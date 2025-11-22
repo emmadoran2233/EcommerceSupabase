@@ -1,0 +1,65 @@
+
+[functions.verifyStripe]
+enabled = true
+verify_jwt = true
+import_map = "./functions/verifyStripe/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/verifyStripe/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/verifyStripe/*.html" ]
+
+[functions.stripeWebhook]
+enabled = true
+verify_jwt = true
+import_map = "./functions/stripeWebhook/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/stripeWebhook/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/stripeWebhook/*.html" ]
+
+[functions.checkOrderStatus]
+enabled = true
+verify_jwt = true
+import_map = "./functions/checkOrderStatus/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/checkOrderStatus/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/checkOrderStatus/*.html" ]
+
+[functions.verifyGooglePay]
+enabled = true
+verify_jwt = true
+import_map = "./functions/verifyGooglePay/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/verifyGooglePay/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/verifyGooglePay/*.html" ]
+
+[functions.reorder]
+enabled = true
+verify_jwt = true
+import_map = "./functions/reorder/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/reorder/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/reorder/*.html" ]
+
+[functions.extendDepositHold]
+enabled = true
+verify_jwt = true
+import_map = "./functions/extendDepositHold/deno.json"
+entrypoint = "./functions/extendDepositHold/index.ts"
+
+[cron.jobs.extendDepositHold]
+schedule = "0 * * * *"
+command = "extendDepositHold"
