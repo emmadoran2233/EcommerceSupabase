@@ -10,6 +10,7 @@ import Orders from "./pages/Orders";
 import Inventory from "./pages/Inventory";
 import BannerControl from "./pages/BannerControl";
 import Login from "./components/Login";
+import AuthCallback from "./pages/AuthCallback";
 import EditStore from "./pages/EditStore";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -135,6 +136,8 @@ const App = () => {
       <Navbar setToken={setToken} />
       <hr />
       <Routes>
+        {/* Auth callback for email confirmation */}
+        <Route path="/auth/callback" element={<AuthCallback setToken={setToken} />} />
         {/* All admin pages nested under /admin/:sellerId */}
         <Route path="/admin/:sellerId/*" element={<SellerRoutes token={token} user={user} />} />
         {/* Default redirect if visiting root */}

@@ -27,27 +27,52 @@ const Login = ({ setToken }) => {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { name } },
+          options: { 
+            data: { name },
+            emailRedirectTo: `${redirectUrl}/auth/callback`
+          },
         });
+
+        console.log("Sign up data:", data);
+        console.log("Sign up error:", error);
 
         if (error) {
           toast.error(error.message);
           return;
         }
-
+        
         const userId = data?.user?.id || data?.session?.user?.id || null;
         const accessToken = data?.session?.access_token || "";
-
+        
+        console.log("User ID:", userId);
+        console.log("Access Token:", accessToken);
+        
+        if (!userId) {
+          toast.info("Please check your email to confirm your account before logging in.");
+          return;
+        }
+        
         if (userId) {
           localStorage.setItem("user_id", userId);
         }
-
+        
         if (accessToken) {
+          // Auto-confirmed (email confirmation disabled)
           setToken(accessToken);
           localStorage.setItem("token", accessToken);
+          toast.success("Admin account created successfully!");
+          navigate(`/admin/${userId}/add-sell`);
+        } else {
+          // Email confirmation required
+          toast.success("Account created! Please check your email to confirm your account.");
+          // Clear form and switch to login after a delay
+          setTimeout(() => {
+            setEmail("");
+            setPassword("");
+            setName("");
+            setCurrentState("Login");
+          }, 2000);
         }
-
-        toast.success("Admin account created successfully!");
       } else {
         // Login Logic
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -59,24 +84,18 @@ const Login = ({ setToken }) => {
           toast.error(error.message);
           return;
         }
-
       if (data?.session) {
         const session = data.session;
         const sellerId = session.user?.id;
-
-        // ✅ Save session token
         setToken(session.access_token);
         localStorage.setItem("token", session.access_token);
         localStorage.setItem("user_id", sellerId);
-
         toast.success("Login successful!");
-
-        // ✅ Redirect to this seller’s admin panel
         navigate(`/admin/${sellerId}/add-sell`);
       }
-    } catch (error) {
+    }} catch (error) {
       console.error(error);
-      toast.error(error.message);
+      toast.error(error?.message || "An error occurred");
     }
   };
 
@@ -102,10 +121,6 @@ const Login = ({ setToken }) => {
     e.preventDefault();
     e.stopPropagation();
 
-    console.log("Password reset clicked!");
-    console.log("Email:", email);
-    console.log("Redirect URL:", `${redirectUrl}/reset-password`);
-
     if (!email) {
       toast.error("Please enter your email address first");
       return;
@@ -130,7 +145,6 @@ const Login = ({ setToken }) => {
       toast.error(err.message);
     }
   };
-
   useEffect(() => {
     const fetchSession = async () => {
       const { data } = await supabase.auth.getSession();
