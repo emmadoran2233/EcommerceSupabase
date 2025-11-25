@@ -15,6 +15,7 @@ import SearchBar from './components/SearchBar'
 import Profile from './pages/Profile';
 import BannerAlert from './components/BannerAlert';
 import StorePage from "./pages/StorePage";
+import ResetPassword from './pages/ResetPassword';
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -36,6 +37,7 @@ const App = () => {
         <Route path="/store/:sellerId" element={<StorePage />} />
         <Route path='/cart' element={<Cart />} />
         <Route path='/login' element={<Login />} />
+        <Route path='/reset-password' element={<ResetPassword />} />
         <Route path='/place-order' element={<PlaceOrder />} />
         <Route path='/orders' element={<Orders />} />
         <Route path='/verify' element={<Verify />} />
