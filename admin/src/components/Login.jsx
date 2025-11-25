@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 const Login = ({ setToken }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [currentState, setCurrentState] = useState("Login");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
@@ -21,15 +22,43 @@ const Login = ({ setToken }) => {
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      if (currentState === "Sign Up") {
+        // Sign Up Logic
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { name } },
+        });
 
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+
+        const userId = data?.user?.id || data?.session?.user?.id || null;
+        const accessToken = data?.session?.access_token || "";
+
+        if (userId) {
+          localStorage.setItem("user_id", userId);
+        }
+
+        if (accessToken) {
+          setToken(accessToken);
+          localStorage.setItem("token", accessToken);
+        }
+
+        toast.success("Admin account created successfully!");
+      } else {
+        // Login Logic
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
 
       if (data?.session) {
         const session = data.session;
@@ -134,6 +163,19 @@ const Login = ({ setToken }) => {
         <h1 className="text-2xl font-bold mb-4 text-center">Admin Panel</h1>
 
         <form onSubmit={onSubmitHandler}>
+          {currentState === "Sign Up" && (
+            <div className="mb-3 min-w-72">
+              <p className="text-sm font-medium text-gray-700 mb-2">Admin User Name</p>
+              <input
+                onChange={(e) => setName(e.target.value)}
+                value={name}
+                className="rounded-md w-full px-3 py-2 border border-gray-300 outline-none"
+                type="text"
+                placeholder="Your name"
+                required
+              />
+            </div>
+          )}
           <div className="mb-3 min-w-72">
             <p className="text-sm font-medium text-gray-700 mb-2">
               Email Address
@@ -184,13 +226,30 @@ const Login = ({ setToken }) => {
               Forgot your password?
             </button>
           </div>
-
+          {currentState === "Login" && (
+            <button
+              type="button"
+              onClick={() => setCurrentState("Sign Up")}
+              className="text-xs text-gray-600 hover:underline mb-2"
+            >
+              No account? Sign up here
+            </button>
+          )}
           <button
             className="mt-2 w-full py-2 px-4 rounded-md text-white bg-black hover:bg-gray-800 transition"
             type="submit"
           >
-            Login with Email
+            {currentState === "Login" ? "Login with Email" : "Sign Up"}
           </button>
+          {currentState === "Sign Up" && (
+            <button
+              type="button"
+              onClick={() => setCurrentState("Login")}
+              className="text-xs text-gray-600 hover:underline mt-2"
+            >
+              Already have an account? Login here
+            </button>
+          )}
 
           {currentState === "Login" && (
             <>
