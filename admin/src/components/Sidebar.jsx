@@ -6,7 +6,6 @@ const Sidebar = ({ sellerId }) => {
   return (
     <div className="w-[18%] min-h-screen border-r-2 bg-white">
       <div className="flex flex-col gap-4 pt-6 pl-[20%] text-[15px]">
-
         {/* ---------- SELL SECTION ---------- */}
         <h3 className="text-gray-500 text-sm font-semibold mt-2">SELL</h3>
 
@@ -57,7 +56,11 @@ const Sidebar = ({ sellerId }) => {
             }`
           }
         >
-          <img className="w-5 h-5" src={assets.order_icon} alt="lend_list_icon" />
+          <img
+            className="w-5 h-5"
+            src={assets.order_icon}
+            alt="lend_list_icon"
+          />
           <p className="hidden md:block">Lend Item List</p>
         </NavLink>
 
@@ -84,12 +87,18 @@ const Sidebar = ({ sellerId }) => {
             }`
           }
         >
-          <img className="w-5 h-5" src={assets.order_icon} alt="inventory_icon" />
+          <img
+            className="w-5 h-5"
+            src={assets.order_icon}
+            alt="inventory_icon"
+          />
           <p className="hidden md:block">Inventory</p>
         </NavLink>
 
         {/* ---------- STORE SETTINGS ---------- */}
-        <h3 className="text-gray-500 text-sm font-semibold mt-6">STORE SETTINGS</h3>
+        <h3 className="text-gray-500 text-sm font-semibold mt-6">
+          STORE SETTINGS
+        </h3>
 
         <NavLink
           to={`/admin/${sellerId}/banner`}
@@ -118,7 +127,6 @@ const Sidebar = ({ sellerId }) => {
           <img className="w-5 h-5" src={assets.order_icon} alt="store" />
           <p className="hidden md:block">Edit Store Info</p>
         </NavLink>
-
       </div>
     </div>
   );

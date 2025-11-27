@@ -15,6 +15,7 @@ const Add = ({ token, user }) => {
   const [category, setCategory] = useState("Men")
   const [subCategory, setSubCategory] = useState("Topwear")
   const [bestseller, setBestseller] = useState(false)
+  const [isCustomizable, setIsCustomizable] = useState(false)
   const [sizes, setSizes] = useState([])
   const [stock, setStock] = useState(0) // ✅ new stock state
 
@@ -60,6 +61,7 @@ const Add = ({ token, user }) => {
           sizes,
           images: imageUrls,
           stock: parseInt(stock),
+          is_customizable: isCustomizable,
           seller_id: user.id, // ✅ link product to current seller
         },
       ])
@@ -75,6 +77,7 @@ const Add = ({ token, user }) => {
       setCategory("Men")
       setSubCategory("Topwear")
       setBestseller(false)
+      setIsCustomizable(false)
       setSizes([])
       setStock(0)
       setImage1(false)
@@ -226,15 +229,25 @@ const Add = ({ token, user }) => {
       </div>
 
       {/* ---------------- Bestseller ---------------- */}
-      <div className="flex gap-2 mt-2">
-        <input
-          onChange={() => setBestseller((prev) => !prev)}
-          checked={bestseller}
-          type="checkbox"
-          id="bestseller"
-        />
-        <label className="cursor-pointer" htmlFor="bestseller">
-          Add to bestseller
+      <div className="flex flex-col gap-2 mt-2">
+        <label className="flex gap-2 items-center cursor-pointer" htmlFor="bestseller">
+          <input
+            onChange={() => setBestseller((prev) => !prev)}
+            checked={bestseller}
+            type="checkbox"
+            id="bestseller"
+          />
+          <span>Add to bestseller</span>
+        </label>
+
+        <label className="flex gap-2 items-center cursor-pointer" htmlFor="is_customizable">
+          <input
+            onChange={() => setIsCustomizable((prev) => !prev)}
+            checked={isCustomizable}
+            type="checkbox"
+            id="is_customizable"
+          />
+          <span>Allow customization (shows “Customize” button to shoppers)</span>
         </label>
       </div>
 

@@ -2,7 +2,6 @@ import React, { useContext, useState } from "react";
 import { assets } from "../assets/assets";
 import { Link, NavLink } from "react-router-dom";
 import { ShopContext } from "../context/ShopContext";
-import { supabase } from "../supabaseClient";
 const Navbar = () => {
   const [visible, setVisible] = useState(false);
 
@@ -30,6 +29,10 @@ const Navbar = () => {
         </NavLink>
         <NavLink to="/contact" className="flex flex-col items-center gap-1">
           <p>CONTACT</p>
+          <hr className="w-2/4 border-none h-[1.5px] bg-gray-700 hidden" />
+        </NavLink>
+        <NavLink to="/wanted-items" className="flex flex-col items-center gap-1">
+          <p>WANTED ITEMS</p>
           <hr className="w-2/4 border-none h-[1.5px] bg-gray-700 hidden" />
         </NavLink>
       </ul>
@@ -134,10 +137,16 @@ const Navbar = () => {
           >
             CONTACT
           </NavLink>
+          <NavLink
+            onClick={() => setVisible(false)}
+            className="py-2 pl-6 border"
+            to="/wanted-items"
+          >
+            WANTED ITEMS
+          </NavLink>
         </div>
       </div>
     </div>
   );
 };
-
 export default Navbar;
