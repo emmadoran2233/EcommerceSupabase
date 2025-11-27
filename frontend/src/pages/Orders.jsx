@@ -88,6 +88,11 @@ const Orders = () => {
                 <div>
                   <p>{item.name}</p>
                   <p>{order.paymentmethod} | Size: {item.size} | Qty: {item.quantity}</p>
+                  {item.customization && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      ✏️ Custom: {item.customization.lines?.filter(Boolean).join(' • ')}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

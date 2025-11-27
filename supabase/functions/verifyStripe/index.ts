@@ -9,6 +9,12 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "https://www.reshareloop.com",
+  "https://ecommerce-supabase-wine.vercel.app/",
+  "https://vercel.com/emmadoran2233s-projects/ecommerce-supabase/7rJg9F2cMKHv5Lgdn1rgrWWsXHMU",
+];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -21,15 +27,12 @@ serve(async (req) => {
       },
     });
   }
-
-  console.log("verifyStripe invoked, method:", req.method);
-
   const bodyText = await req.text();
-  console.log("verifyStripe raw body:", bodyText); 
+  console.log("verifyStripe raw body:", bodyText);
 
   let parsed;
   try {
-    parsed = JSON.parse(bodyText);
+    parsed = bodyText ? JSON.parse(bodyText) : {};
   } catch (e) {
     console.error("Invalid JSON:", bodyText);
     return new Response(
@@ -37,12 +40,29 @@ serve(async (req) => {
       {
         status: 400,
         headers: { "Access-Control-Allow-Origin": "*" },
-      },
+      }
     );
   }
+  const headerOrigin = req.headers.get("origin")?.trim() || null;
+  const bodyOrigin = (parsed.origin && String(parsed.origin).trim()) || null;
+  const envFrontend = (Deno.env.get("FRONTEND_URL") || "").trim() || null;
+  const defaultProd = "https://www.reshareloop.com";
 
+  console.log(
+    "headerOrigin:",
+    headerOrigin,
+    "bodyOrigin:",
+    bodyOrigin,
+    "FRONTEND_URL:",
+    envFrontend
+  );
+
+  const candidate = headerOrigin || bodyOrigin || envFrontend || defaultProd;
+  const baseUrl = ALLOWED_ORIGINS.includes(candidate) ? candidate : defaultProd;
+
+  console.log("Using baseUrl for stripe success/cancel:", baseUrl);
   const { orderId, amount } = parsed;
-  console.log("verifyStripe parsed:", { orderId, amount }); 
+  console.log("verifyStripe parsed:", { orderId, amount });
 
   if (!orderId || !amount) {
     console.error("Missing orderId or amount in request:", parsed);
@@ -51,7 +71,7 @@ serve(async (req) => {
       {
         status: 400,
         headers: { "Access-Control-Allow-Origin": "*" },
-      },
+      }
     );
   }
 
@@ -62,23 +82,36 @@ serve(async (req) => {
         {
           price_data: {
             currency: "usd",
-            product_data: { name: "Emazing Store Order" },
+            product_data: { name: "ReShareLoop" },
             unit_amount: Math.round(amount * 100),
           },
           quantity: 1,
         },
       ],
       mode: "payment",
-      success_url: `http://localhost:5173/verify?success=true&orderId=${orderId}`,
-cancel_url: `http://localhost:5173/verify?success=false&orderId=${orderId}`,
-
+      success_url: `${baseUrl}/verify?success=true&orderId=${orderId}`,
+      cancel_url: `${baseUrl}/verify?success=false&orderId=${orderId}`,
       metadata: {
         orderId: String(orderId),
       },
     });
 
     console.log("Created Stripe session with metadata:", session.metadata);
+    console.log("Created session id:", session.id, "session.url:", session.url);
 
+    // retrieve expanded session to see product name Stripe stored
+    const sessionFull = await stripe.checkout.sessions.retrieve(session.id, {
+      expand: ["line_items.data.price.product"],
+    });
+    console.log(
+      "Expanded line items:",
+      JSON.stringify(
+        sessionFull.line_items?.data.map((li) => ({
+          name: (li.price?.product as any)?.name || li.description,
+          unit_amount: li.price?.unit_amount || li.amount_subtotal,
+        }))
+      )
+    );
     return new Response(
       JSON.stringify({ success: true, session_url: session.url }),
       {
@@ -88,7 +121,7 @@ cancel_url: `http://localhost:5173/verify?success=false&orderId=${orderId}`,
           "Access-Control-Allow-Headers":
             "authorization, x-client-info, apikey, content-type",
         },
-      },
+      }
     );
   } catch (err) {
     console.error("Stripe Error:", err.message, "raw body:", bodyText);
@@ -97,7 +130,7 @@ cancel_url: `http://localhost:5173/verify?success=false&orderId=${orderId}`,
       {
         status: 500,
         headers: { "Access-Control-Allow-Origin": "*" },
-      },
+      }
     );
   }
 });

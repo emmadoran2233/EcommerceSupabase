@@ -14,6 +14,9 @@ import Footer from './components/Footer'
 import SearchBar from './components/SearchBar'
 import Profile from './pages/Profile';
 import BannerAlert from './components/BannerAlert';
+import StorePage from "./pages/StorePage";
+import WantedItems from './pages/WantedItems';
+
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Verify from './pages/Verify'
@@ -31,12 +34,14 @@ const App = () => {
         <Route path='/about' element={<About />} />
         <Route path='/contact' element={<Contact />} />
         <Route path='/product/:productId' element={<Product />} />
+        <Route path="/store/:sellerId" element={<StorePage />} />
         <Route path='/cart' element={<Cart />} />
         <Route path='/login' element={<Login />} />
         <Route path='/place-order' element={<PlaceOrder />} />
         <Route path='/orders' element={<Orders />} />
         <Route path='/verify' element={<Verify />} />
         <Route path='/profile' element={<Profile />} />
+        <Route path='/wanted-items' element={<WantedItems />} />
       </Routes>
       <Footer />
     </div>

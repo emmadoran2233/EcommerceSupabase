@@ -3,7 +3,7 @@ import { ShopContext } from "../context/ShopContext";
 import { supabase } from "../supabaseClient";
 
 const Profile = () => {
-  const { user, navigate } = useContext(ShopContext);
+  const { user, navigate, logout } = useContext(ShopContext);
   const [editing, setEditing] = useState(false);
   const [newName, setNewName] = useState(user?.name || "");
 
@@ -21,10 +21,10 @@ const Profile = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/login");
-  };
+  // const handleLogout = async () => {
+  //   await supabase.auth.signOut();
+  //   navigate("/login");
+  // };
 
   if (!user) {
     return (
@@ -86,7 +86,7 @@ const Profile = () => {
 
       {/* Logout button */}
       <button
-        onClick={handleLogout}
+        onClick={()=>logout(navigate)}
         className="mt-6 bg-red-600 text-white px-4 py-2 rounded"
       >
         Logout

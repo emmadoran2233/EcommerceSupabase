@@ -1,3 +1,17 @@
+<<<<<<< HEAD
 backend/node_modules/
 frontend/node_modules/
 backend/node_modules/
+=======
+/node_modules
+frontend/node_modules/
+backend/node_modules/
+.env
+.env.local
+.env.*.local
+.DS_Store
+.vscode/
+dist/
+build/
+supabase/functions/.env
+>>>>>>> origin/feature/supabase-StripePayment

@@ -5,11 +5,12 @@ import { Routes, Route } from "react-router-dom";
 import Add from "./pages/Add";
 import Lend from "./pages/Lend";
 import List from "./pages/List";
-import LendList from './pages/LendList'
+import LendList from "./pages/LendList";
 import Orders from "./pages/Orders";
 import Inventory from "./pages/Inventory";
 import BannerControl from "./pages/BannerControl";
 import Login from "./components/Login";
+import EditStore from "./pages/EditStore";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { supabase } from "./supabaseClient"; // ✅ Supabase client
@@ -81,8 +82,11 @@ const App = () => {
   return (
     <div className="bg-gray-50 min-h-screen">
       <ToastContainer />
-      {token === "" ? (
-        <Login setToken={setToken} />
+      {!token ? (
+        <>
+          <Login setToken={setToken} />
+          <Route path="/" element={<Login setToken={setToken} />} />
+        </>
       ) : (
         <>
           <Navbar setToken={setToken} />
@@ -91,6 +95,10 @@ const App = () => {
             <Sidebar />
             <div className="w-[70%] mx-auto ml-[max(5vw,25px)] my-8 text-gray-600 text-base">
               <Routes>
+                <Route path="/add-sell" element={<Add user={user} />} />
+                <Route path="/list" element={<List user={user} />} />
+                <Route path="/add-lend" element={<Lend user={user} />} />
+                <Route path="/lend-list" element={<LendList user={user} />} />
                 <Route path="/add-sell" element={<Add user={user} />} />
                 <Route path="/list" element={<List user={user} />} />
                 <Route path="/add-lend" element={<Lend user={user} />} />
@@ -104,6 +112,7 @@ const App = () => {
                   path="/banner"
                   element={<BannerControl token={token} user={user} />}
                 />
+                <Route path="/edit-store" element={<EditStore user={user} />} />
               </Routes>
             </div>
           </div>

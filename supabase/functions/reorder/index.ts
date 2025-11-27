@@ -4,7 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Authorization, X-Client-Info, apikey, Content-Type",
+  "Access-Control-Allow-Headers":
+    "Authorization, X-Client-Info, apikey, Content-Type",
 };
 
 serve(async (req) => {
@@ -23,7 +24,10 @@ serve(async (req) => {
 
     if (!user_id || !order_id) {
       return new Response(
-        JSON.stringify({ success: false, message: "Missing user_id or order_id" }),
+        JSON.stringify({
+          success: false,
+          message: "Missing user_id or order_id",
+        }),
         { status: 400, headers: corsHeaders }
       );
     }
@@ -52,15 +56,17 @@ serve(async (req) => {
       .maybeSingle();
 
     if (cartError) throw cartError;
-    const existingItems = Array.isArray(existingCart?.items) ? existingCart.items : [];
+    const existingItems = Array.isArray(existingCart?.items)
+      ? existingCart.items
+      : [];
 
     const combinedMap = new Map();
-    existingItems.forEach(item => {
+    existingItems.forEach((item) => {
       if (item && item.id && item.size) {
         combinedMap.set(`${item.id}_${item.size}`, { ...item });
       }
     });
-    orderItems.forEach(item => {
+    orderItems.forEach((item) => {
       if (!item || !item.id || !item.size) return;
       const key = `${item.id}_${item.size}`;
       if (combinedMap.has(key)) {
@@ -77,16 +83,16 @@ serve(async (req) => {
         .update({ items: mergedItems })
         .eq("user_id", user_id);
     } else {
-      await supabase
-        .from("carts")
-        .insert([{ user_id, items: orderItems }]);
+      await supabase.from("carts").insert([{ user_id, items: orderItems }]);
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: "Reorder items merged into cart!" }),
+      JSON.stringify({
+        success: true,
+        message: "Reorder items merged into cart!",
+      }),
       { status: 200, headers: corsHeaders }
     );
-
   } catch (err) {
     console.error("💥 Reorder Error:", err);
     return new Response(
@@ -94,8 +100,4 @@ serve(async (req) => {
       { status: 500, headers: corsHeaders }
     );
   }
-<<<<<<< HEAD
 });
-=======
-});
->>>>>>> feature/merged-Han

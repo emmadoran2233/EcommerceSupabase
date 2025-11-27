@@ -8,6 +8,21 @@ const Cart = () => {
   const { products, currency, cartItems, updateQuantity, navigate } =
     useContext(ShopContext);
   const [cartData, setCartData] = useState([]);
+  const toNumber = (v) => {
+    if (v == null) return 0;
+    if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+    if (typeof v === "string") {
+      const cleaned = v.replace(/[^\d.-]/g, "");
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : 0;
+    }
+    return 0;
+  };
+
+  const fmt = (v) => {
+    const n = toNumber(v);
+    return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+  };
 
   useEffect(() => {
     if (products.length > 0) {
@@ -24,13 +39,21 @@ const Cart = () => {
 
           const quantity = typeof item === "object" ? item.quantity : item;
           const rentInfo = typeof item === "object" ? item.rentInfo : null;
+          const customization =
+            typeof item === "object" ? item.customization : null;
+          const baseSize =
+            typeof item === "object" && item.baseSize
+              ? item.baseSize
+              : sizeKey.split("|custom:")[0];
 
           if (quantity > 0) {
             tempData.push({
               id: productId,
-              size: sizeKey,
+              sizeKey,
+              displaySize: baseSize,
               quantity,
               rentInfo,
+              customization,
               productData: product,
             });
           }
@@ -58,8 +81,8 @@ const Cart = () => {
               const imageSrc = productData.images?.[0] || "";
 
               return (
-                <div
-                  key={`${item.id}-${item.size}`}
+            <div
+              key={`${item.id}-${item.sizeKey}`}
                   className="py-4 border-t border-b text-gray-700 grid grid-cols-[4fr_0.5fr_0.5fr]"
                 >
                   <div className="flex items-start gap-6">
@@ -73,61 +96,80 @@ const Cart = () => {
                       {item.rentInfo ? (
                         <div className="text-sm text-gray-500 mt-2">
                           <p>
-                            Rent Date:{" "}
+                            Rent Date:
                             {new Date(
                               item.rentInfo.startDate
-                            ).toLocaleDateString()}{" "}
-                            →{" "}
+                            ).toLocaleDateString()}
+                            →
                             {new Date(
                               item.rentInfo.endDate
                             ).toLocaleDateString()}
                           </p>
+                          <p>Rent Fee: ${fmt(item.rentInfo.rentFee)}</p>
                           <p>
-                             Rent Fee: $
-                            {item.rentInfo.rentFee.toFixed(2)}
-                          </p>
-                          <p>
-                            Rent Deposit: ${item.rentInfo.deposit.toFixed(2)}
+                            Rent Deposit: ${fmt(item.rentInfo.deposit)}
                           </p>
                           <img
-                              onClick={() =>
-                                updateQuantity(item.id, item.size, 0)
-                              }
-                              src={assets.bin_icon}
-                              alt="delete"
-                              className="w-5 cursor-pointer hover:opacity-60 transition"
-                            />
-                          <p className="text-xs text-gray-400 mt-1">
-                          </p>
+                            onClick={() =>
+                              updateQuantity(item.id, item.sizeKey, 0)
+                            }
+                            src={assets.bin_icon}
+                            alt="delete"
+                            className="w-5 cursor-pointer hover:opacity-60 transition"
+                          />
+                          <p className="text-xs text-gray-400 mt-1"></p>
                         </div>
                       ) : (
                         // ✅ 普通商品显示 size / quantity
-                        <div className="flex items-center gap-5 mt-2">
-                          <p>{currency + productData.price}</p>
-                          <p className="px-2 sm:px-3 sm:py-1 border bg-slate-50">
-                            {item.size}
-                          </p>
-                          <div className="flex items-center gap-3 mt-2">
-                            <input
-                              type="number"
-                              min="0"
-                              defaultValue={item.quantity}
-                              onChange={(e) => {
-                                const value = Number(e.target.value);
-                                if (isNaN(value)) return;
-                                updateQuantity(item.id, item.size, value);
-                              }}
-                              className="border w-16 text-center"
-                            />
-                            <img
-                              onClick={() =>
-                                updateQuantity(item.id, item.size, 0)
-                              }
-                              src={assets.bin_icon}
-                              alt="delete"
-                              className="w-5 cursor-pointer hover:opacity-60 transition"
-                            />
+                        <div className="flex flex-col gap-2 mt-2">
+                          <div className="flex items-center gap-5">
+                            <div>
+                              <p>{currency + productData.price}</p>
+                              <p className="px-2 sm:px-3 sm:py-1 border bg-slate-50 inline-block mt-1">
+                                {item.displaySize}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3 mt-2">
+                              <input
+                                type="number"
+                                min="0"
+                                defaultValue={item.quantity}
+                                onChange={(e) => {
+                                  const value = Number(e.target.value);
+                                  if (isNaN(value)) return;
+                                  updateQuantity(item.id, item.sizeKey, value);
+                                }}
+                                className="border w-16 text-center"
+                              />
+                              <img
+                                onClick={() =>
+                                  updateQuantity(item.id, item.sizeKey, 0)
+                                }
+                                src={assets.bin_icon}
+                                alt="delete"
+                                className="w-5 cursor-pointer hover:opacity-60 transition"
+                              />
+                            </div>
                           </div>
+                          {item.customization && (
+                            <div className="text-xs text-gray-500 space-y-1">
+                              <p className="font-medium flex items-center gap-1">
+                                ✏️ Custom Text
+                                <span
+                                  className="inline-block w-3 h-3 rounded-full border"
+                                  style={{
+                                    backgroundColor:
+                                      item.customization.color || "#111827",
+                                  }}
+                                />
+                              </p>
+                              <p>
+                                {item.customization.lines
+                                  ?.filter((line) => line)
+                                  .join(" • ")}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -137,8 +179,8 @@ const Cart = () => {
                   <div className="flex items-center justify-end font-medium text-sm">
                     {currency}
                     {item.rentInfo
-                      ? item.rentInfo.totalPrice.toFixed(2)
-                      : (productData.price * item.quantity).toFixed(2)}
+                      ? fmt(item.rentInfo.totalPrice)
+                      : fmt((productData.price * item.quantity))}
                   </div>
                 </div>
               );

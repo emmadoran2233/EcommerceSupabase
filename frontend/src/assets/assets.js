@@ -56,7 +56,11 @@ import p_img52 from './p_img52.png'
 
 
 import logo from './logo.png'
+<<<<<<< HEAD
 import hero_img from './hero_img.png'
+=======
+import howReShareLoop from './howReShareLoop.png'
+>>>>>>> origin/feature/supabase-StripePayment
 import cart_icon from './cart_icon.png'
 import bin_icon from './bin_icon.png'
 import dropdown_icon from './dropdown_icon.png'
@@ -74,10 +78,29 @@ import razorpay_logo from './razorpay_logo.png'
 import stripe_logo from './stripe_logo.png'
 import googlepay_logo from './googlepay_logo.png';
 import cross_icon from './cross_icon.png'
+<<<<<<< HEAD
 
 export const assets = {
     logo,
     hero_img,
+=======
+import iphone17pro_2 from './iphone17pro_2.png';
+import robot_img from './robot_img.png';
+import drone_2 from './drone_2.png';
+import camera_1 from './camera_1.png';
+import radon_detector from './radon_detector.png';
+import partyTent from './partyTent.png';
+import questVR from './questVR.png';
+import carpetCleaner from './carpetCleaner.png';
+import weddingDress from './weddingDress.png';
+import electricGenerator from './electricGenerator.png';
+import rolex from './rolex.png';
+import chanel from './chanel.png';
+import Louis from './Louis.png';
+export const assets = {
+    logo,
+    howReShareLoop,
+>>>>>>> origin/feature/supabase-StripePayment
     cart_icon,
     dropdown_icon,
     exchange_icon,
@@ -94,7 +117,22 @@ export const assets = {
     razorpay_logo,
     stripe_logo,
     googlepay_logo,
+<<<<<<< HEAD
     cross_icon
+=======
+    cross_icon,
+    iphone17pro_2,
+    robot_img,
+    drone_2,
+    camera_1,
+    radon_detector,
+    partyTent, 
+    questVR,
+    carpetCleaner,
+    weddingDress,
+    electricGenerator,
+    rolex, chanel, Louis
+>>>>>>> origin/feature/supabase-StripePayment
 }
 
 export const products = [
