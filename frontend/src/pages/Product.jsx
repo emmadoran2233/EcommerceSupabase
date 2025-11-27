@@ -9,26 +9,39 @@ import { supabase } from "../supabaseClient";
 const Product = () => {
   const { productId } = useParams();
   const { products, currency, addToCart, user } = useContext(ShopContext);
+
   const [productData, setProductData] = useState(false);
+  const [sellerProfile, setSellerProfile] = useState(null); // ✅ store seller info
   const [image, setImage] = useState("");
   const [size, setSize] = useState("");
   const [rentInfo, setRentInfo] = useState(null);
+
   const [reviews, setReviews] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [userReview, setUserReview] = useState(null);
-
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [editText, setEditText] = useState("");
 
-  const fetchProductData = async () => {
-    products.map((item) => {
-      if (item.id === productId) {
-        setProductData(item);
-        setImage(item.images[0]);
-        return null;
-      }
-    });
+  // ---------------- Fetch product & reviews ----------------
+  const fetchProductData = () => {
+    const found = products.find((item) => String(item.id) === String(productId));
+    if (found) {
+      setProductData(found);
+      setImage(found.images?.[0] || "");
+    }
+  };
+
+  const fetchSellerProfile = async (sellerId) => {
+    if (!sellerId) return;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, name, avatar_url")
+      .eq("id", sellerId)
+      .maybeSingle();
+
+    if (!error) setSellerProfile(data);
+    else console.error("Error fetching seller profile:", error);
   };
 
   const fetchReviews = async () => {
@@ -42,7 +55,6 @@ const Product = () => {
       console.error("Error fetching reviews:", error);
     } else {
       setReviews(data);
-
       if (user?.id) {
         const existing = data.find((r) => r.user_id === user.id);
         setUserReview(existing || null);
@@ -55,11 +67,16 @@ const Product = () => {
     fetchReviews();
   }, [productId, products]);
 
-  // ---------------- Handlers ----------------
+  useEffect(() => {
+    if (productData?.seller_id) {
+      fetchSellerProfile(productData.seller_id);
+    }
+  }, [productData]);
+
+  // ---------------- Review Handlers ----------------
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-
     if (!user) {
       alert("You must be logged in to submit a review.");
       return;
@@ -102,15 +119,13 @@ const Product = () => {
 
   const handleDeleteReview = async (id) => {
     const { error } = await supabase.from("reviews").delete().eq("id", id);
-
     if (!error) {
       setReviews(reviews.filter((r) => r.id !== id));
-      if (userReview?.id === id) {
-        setUserReview(null);
-      }
+      if (userReview?.id === id) setUserReview(null);
     }
   };
 
+  // ---------------- Render ----------------
   return productData ? (
     <div className="border-t-2 pt-10 transition-opacity ease-in duration-500 opacity-100">
       {/*----------- Product Data-------------- */}
@@ -136,6 +151,26 @@ const Product = () => {
         {/* -------- Product Info ---------- */}
         <div className="flex-1">
           <h1 className="font-medium text-2xl mt-2">{productData.name}</h1>
+
+          {/* ✅ Seller info block */}
+          {sellerProfile && (
+            <div className="flex items-center gap-3 mt-3">
+              <a
+                href={`/store/${sellerProfile.id}`}
+                className="flex items-center gap-3 group"
+              >
+                <img
+                  src={sellerProfile.avatar_url || assets.user_icon}
+                  alt={sellerProfile.name}
+                  className="w-10 h-10 rounded-full border object-cover"
+                />
+                <span className="text-blue-700 font-medium group-hover:underline">
+                  {sellerProfile.name || "Store Owner"}
+                </span>
+              </a>
+            </div>
+          )}
+
           <div className="flex items-center gap-1 mt-2">
             <img src={assets.star_icon} alt="" className="w-3.5" />
             <img src={assets.star_icon} alt="" className="w-3.5" />
@@ -145,17 +180,6 @@ const Product = () => {
             <p className="pl-2">({reviews.length})</p>
           </div>
 
-          {/* ✅ Simple Seller Link */}
-          {productData.seller_id && (
-            <p className="text-blue-600 text-sm mt-1">
-              <a
-                href={`/store/${productData.seller_id}`}
-                className="underline hover:text-blue-800 font-medium"
-              >
-                View Store
-              </a>
-            </p>
-          )}
           <p className="mt-5 text-3xl font-medium">
             {currency}
             {productData.price}
@@ -163,9 +187,7 @@ const Product = () => {
 
           {/* ✅ Stock display */}
           <p className="mt-2 text-sm text-gray-500">
-            {productData.stock > 0
-              ? `${productData.stock} in stock`
-              : "Out of stock"}
+            {productData.stock > 0 ? `${productData.stock} in stock` : "Out of stock"}
           </p>
 
           <p className="mt-5 text-gray-500 md:w-4/5">
@@ -191,6 +213,7 @@ const Product = () => {
               </div>
             </div>
           )}
+
           {/* ---------- RentCalendar for rentable products ---------- */}
           {productData.rentable && (
             <RentCalendar
@@ -199,6 +222,7 @@ const Product = () => {
               onRentChange={(info) => setRentInfo(info)}
             />
           )}
+
           {/* ✅ Add to Cart with stock check */}
           <button
             onClick={() => addToCart(productData.id, size, rentInfo)}
@@ -227,10 +251,10 @@ const Product = () => {
           <b className="border px-5 py-3 text-sm">Description</b>
           <p className="border px-5 py-3 text-sm">Reviews ({reviews.length})</p>
         </div>
+
+        {/* Reviews */}
         <div className="flex flex-col gap-4 border px-6 py-6 text-sm text-gray-500">
-          {reviews.length === 0 && (
-            <p>No reviews yet. Be the first to comment!</p>
-          )}
+          {reviews.length === 0 && <p>No reviews yet. Be the first to comment!</p>}
           {reviews.map((review) => (
             <div
               key={review.id}
@@ -291,6 +315,7 @@ const Product = () => {
           ))}
         </div>
 
+        {/* Add new review */}
         {!userReview && (
           <form
             onSubmit={handleSubmitReview}
