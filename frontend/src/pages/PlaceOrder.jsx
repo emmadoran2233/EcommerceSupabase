@@ -10,7 +10,11 @@ import { toast } from 'react-toastify'
 const PlaceOrder = () => {
 
     const [method, setMethod] = useState('cod');
+<<<<<<< HEAD
     const { navigate, cartItems, setCartItems, getCartAmount, delivery_fee, products, backendUrl } = useContext(ShopContext);
+=======
+    const { navigate, cartItems, setCartItems, getCartTotals, delivery_fee, products, backendUrl } = useContext(ShopContext);
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -61,6 +65,7 @@ const onSubmitHandler = async (event) => {
         event.preventDefault()
         try {
 
+<<<<<<< HEAD
             let orderItems = []
 
             for (const productId in cartItems) {
@@ -91,16 +96,84 @@ const onSubmitHandler = async (event) => {
                 address: formData,
                 items: orderItems,
                 amount: getCartAmount() + delivery_fee,
+=======
+              let orderItems = []
+
+              for (const productId in cartItems) {
+                  for (const sizeKey in cartItems[productId]) {
+                      const entry = cartItems[productId][sizeKey];
+                      const quantity = typeof entry === "object" ? entry.quantity || 1 : entry;
+                        if (quantity > 0) {
+                          const itemInfo = structuredClone(products.find(product => String(product.id) === String(productId)))
+                          if (itemInfo) {
+                              itemInfo.size = sizeKey
+                              itemInfo.quantity = quantity
+                              if (typeof entry === "object" && entry.rentInfo) {
+                                    const rentInfo = entry.rentInfo;
+                                    itemInfo.rentInfo = {
+                                        ...rentInfo,
+                                        startDate: rentInfo.startDate instanceof Date
+                                            ? rentInfo.startDate.toISOString()
+                                            : rentInfo.startDate,
+                                        endDate: rentInfo.endDate instanceof Date
+                                            ? rentInfo.endDate.toISOString()
+                                            : rentInfo.endDate,
+                                    };
+                              }
+                              orderItems.push(itemInfo)
+                          }
+                      }
+                  }
+              }
+
+              const totals = getCartTotals();
+              const subtotal = totals.dueTodaySubtotal || 0;
+              const shippingFee = subtotal === 0 ? 0 : delivery_fee;
+              const amountDue = subtotal + shippingFee;
+              const depositTotal = totals.depositTotal || 0;
+              const rentSubtotal = totals.rentSubtotal || 0;
+              const purchaseSubtotal = totals.purchaseSubtotal || 0;
+              const rentBreakdown = totals.rentItemsSummary || [];
+              const depositStatus = depositTotal > 0 ? "pending_authorization" : "none";
+              const depositEndDate = totals.maxRentalEndDate;
+
+              if (amountDue <= 0) {
+                  toast.error("Your cart total must be greater than $0 to place an order.");
+                  return;
+              }
+
+              let orderData = {
+                address: formData,
+                items: orderItems,
+                  amount: amountDue,
+                  rent_subtotal: rentSubtotal,
+                  purchase_subtotal: purchaseSubtotal,
+                  shipping_fee: shippingFee,
+                  deposit_total: depositTotal,
+                  deposit_currency: "usd",
+                  charge_currency: "usd",
+                  rent_breakdown: rentBreakdown,
+                  deposit_hold_status: depositStatus,
+                  deposit_rental_end_date: depositEndDate,
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
                 paymentmethod: method,
                 payment: false,
                 status: "Order Placed",
                 date: new Date().toISOString()
             }
+<<<<<<< HEAD
             console.log("cartItems:", cartItems);
             console.log("products:", products);
             console.log("getCartAmount():", getCartAmount());
             console.log("delivery_fee:", delivery_fee);
             console.log("orderData:", orderData);
+=======
+              console.log("cartItems:", cartItems);
+              console.log("products:", products);
+              console.log("checkout totals:", totals);
+              console.log("shipping_fee:", shippingFee);
+              console.log("orderData:", orderData);
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
 
 
             switch (method) {
@@ -134,7 +207,11 @@ const onSubmitHandler = async (event) => {
                         }
 
                         // ✅ 插入订单并附加 user_id
+<<<<<<< HEAD
                         const { data: insertedOrder, error } = await supabase
+=======
+                          const { data: insertedOrders, error } = await supabase
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
                             .from("orders")
                             .insert([
                                 {
@@ -142,15 +219,25 @@ const onSubmitHandler = async (event) => {
                                     user_id: userId,
                                 },
                             ])
+<<<<<<< HEAD
                             .select("id")
                             .single();
+=======
+                              .select("id");
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
 
                         if (error) {
                             toast.error(error.message);
                             return;
                         }
 
+<<<<<<< HEAD
                         const orderId = insertedOrder?.id;
+=======
+                          const orderId = Array.isArray(insertedOrders)
+                              ? insertedOrders[0]?.id
+                              : insertedOrders?.id;
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
                         if (!orderId) {
                             toast.error("Order ID missing after insert");
                             return;
@@ -165,7 +252,11 @@ const onSubmitHandler = async (event) => {
                                     Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
                                     "Content-Type": "application/json",
                                 },
+<<<<<<< HEAD
                                 body: JSON.stringify({ orderId, amount: orderData.amount }),
+=======
+                                  body: JSON.stringify({ orderId }),
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
                             }
                         );
 

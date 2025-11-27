@@ -5,7 +5,10 @@ import { supabase } from "../supabaseClient";
 
 const List = ({ token, user }) => {
   const [list, setList] = useState([]);
+<<<<<<< HEAD
   const [updatingId, setUpdatingId] = useState(null);
+=======
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
 
   // ---------------- Fetch Seller’s Products ----------------
   const fetchList = async () => {
@@ -24,6 +27,7 @@ const List = ({ token, user }) => {
     }
   };
 
+<<<<<<< HEAD
   // ---------------- Toggle Customizable ----------------
   const toggleCustomizable = async (productId, currentValue) => {
     if (!user?.id) return;
@@ -56,6 +60,8 @@ const List = ({ token, user }) => {
     }
   };
 
+=======
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
   // ---------------- Remove Product ----------------
   const removeProduct = async (id) => {
     try {
@@ -83,20 +89,31 @@ const List = ({ token, user }) => {
       <p className="mb-2 font-semibold text-lg">All Products List</p>
       <div className="flex flex-col gap-2">
         {/* ------- List Table Title ---------- */}
+<<<<<<< HEAD
         <div className="hidden md:grid grid-cols-[1fr_3fr_1fr_1fr_1fr_1fr_1.5fr] items-center py-1 px-2 border bg-gray-100 text-sm">
+=======
+        <div className="hidden md:grid grid-cols-[1fr_3fr_1fr_1fr_1fr_1fr] items-center py-1 px-2 border bg-gray-100 text-sm">
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
           <b>Image</b>
           <b>Name</b>
           <b>Category</b>
           <b>Price</b>
           <b>Stock</b>
+<<<<<<< HEAD
           <b>Customizable</b>
+=======
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
           <b className="text-center">Action</b>
         </div>
 
         {/* ------ Product List ------ */}
         {list.map((item, index) => (
           <div
+<<<<<<< HEAD
             className="grid grid-cols-[1fr_3fr_1fr] md:grid-cols-[1fr_3fr_1fr_1fr_1fr_1fr_1.5fr] items-center gap-2 py-1 px-2 border text-sm"
+=======
+            className="grid grid-cols-[1fr_3fr_1fr] md:grid-cols-[1fr_3fr_1fr_1fr_1fr_1fr] items-center gap-2 py-1 px-2 border text-sm"
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
             key={index}
           >
             <img className="w-12" src={item.images && item.images[0]} alt="" />
@@ -107,6 +124,7 @@ const List = ({ token, user }) => {
               {item.price}
             </p>
             <p>{item.stock ?? 0}</p>
+<<<<<<< HEAD
             <div className="flex items-center gap-2">
               <label
                 htmlFor={`customizable-${item.id}`}
@@ -123,6 +141,8 @@ const List = ({ token, user }) => {
                 className="cursor-pointer"
               />
             </div>
+=======
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
             <p
               onClick={() => removeProduct(item.id)}
               className="text-right md:text-center cursor-pointer text-lg text-red-500"

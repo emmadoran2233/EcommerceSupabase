@@ -8,8 +8,11 @@ const Login = () => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
+<<<<<<< HEAD
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+=======
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
   const redirectUrl =
   (typeof window !== "undefined" && window.location?.origin?.trim()) ||
   (process.env.NODE_ENV === "development"
@@ -19,6 +22,10 @@ const Login = () => {
     event.preventDefault();
     try {
       if (currentState === "Sign Up") {
+<<<<<<< HEAD
+=======
+        // 🟩 注册逻辑
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -58,6 +65,10 @@ const Login = () => {
           return;
         }
 
+<<<<<<< HEAD
+=======
+        // ✅ 兼容所有 Supabase 版本的 user_id 结构
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
         const userId =
           data?.user?.id ||
           data?.session?.user?.id ||
@@ -92,6 +103,7 @@ const Login = () => {
     }
   }, [token]);
 
+<<<<<<< HEAD
   // Password Reset Function
   const handlePasswordReset = async (e) => {
     e.preventDefault();
@@ -119,6 +131,8 @@ const Login = () => {
     }
   };
 
+=======
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
   //Google OAuth Sign-In
   const handleGoogleSignIn = async () => {
     try {
@@ -189,6 +203,7 @@ const Login = () => {
         placeholder="Email"
         required
       />
+<<<<<<< HEAD
       <div className="relative w-full">
         <input
           onChange={(e) => setPassword(e.target.value)}
@@ -224,6 +239,19 @@ const Login = () => {
         >
           Forgot your password?
         </button>
+=======
+      <input
+        onChange={(e) => setPassword(e.target.value)}
+        value={password}
+        type="password"
+        className="w-full px-3 py-2 border border-gray-800"
+        placeholder="Password"
+        required
+      />
+
+      <div className="w-full flex justify-between text-sm mt-[-8px]">
+        <p className="cursor-pointer">Forgot your password?</p>
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
         {currentState === "Login" ? (
           <p
             onClick={() => setCurrentState("Sign Up")}

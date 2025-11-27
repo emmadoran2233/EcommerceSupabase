@@ -15,7 +15,10 @@ const Add = ({ token, user }) => {
   const [category, setCategory] = useState("Men")
   const [subCategory, setSubCategory] = useState("Topwear")
   const [bestseller, setBestseller] = useState(false)
+<<<<<<< HEAD
   const [isCustomizable, setIsCustomizable] = useState(false)
+=======
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
   const [sizes, setSizes] = useState([])
   const [stock, setStock] = useState(0) // ✅ new stock state
 
@@ -61,7 +64,10 @@ const Add = ({ token, user }) => {
           sizes,
           images: imageUrls,
           stock: parseInt(stock),
+<<<<<<< HEAD
           is_customizable: isCustomizable,
+=======
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
           seller_id: user.id, // ✅ link product to current seller
         },
       ])
@@ -77,7 +83,10 @@ const Add = ({ token, user }) => {
       setCategory("Men")
       setSubCategory("Topwear")
       setBestseller(false)
+<<<<<<< HEAD
       setIsCustomizable(false)
+=======
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
       setSizes([])
       setStock(0)
       setImage1(false)
@@ -229,6 +238,7 @@ const Add = ({ token, user }) => {
       </div>
 
       {/* ---------------- Bestseller ---------------- */}
+<<<<<<< HEAD
       <div className="flex flex-col gap-2 mt-2">
         <label className="flex gap-2 items-center cursor-pointer" htmlFor="bestseller">
           <input
@@ -248,6 +258,17 @@ const Add = ({ token, user }) => {
             id="is_customizable"
           />
           <span>Allow customization (shows “Customize” button to shoppers)</span>
+=======
+      <div className="flex gap-2 mt-2">
+        <input
+          onChange={() => setBestseller((prev) => !prev)}
+          checked={bestseller}
+          type="checkbox"
+          id="bestseller"
+        />
+        <label className="cursor-pointer" htmlFor="bestseller">
+          Add to bestseller
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
         </label>
       </div>
 

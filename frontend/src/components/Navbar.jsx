@@ -2,6 +2,10 @@ import React, { useContext, useState } from "react";
 import { assets } from "../assets/assets";
 import { Link, NavLink } from "react-router-dom";
 import { ShopContext } from "../context/ShopContext";
+<<<<<<< HEAD
+=======
+import { supabase } from "../supabaseClient";
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
 const Navbar = () => {
   const [visible, setVisible] = useState(false);
 
@@ -31,10 +35,13 @@ const Navbar = () => {
           <p>CONTACT</p>
           <hr className="w-2/4 border-none h-[1.5px] bg-gray-700 hidden" />
         </NavLink>
+<<<<<<< HEAD
         <NavLink to="/wanted-items" className="flex flex-col items-center gap-1">
           <p>WANTED ITEMS</p>
           <hr className="w-2/4 border-none h-[1.5px] bg-gray-700 hidden" />
         </NavLink>
+=======
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
       </ul>
 
       <div className="flex items-center gap-6">
@@ -137,6 +144,7 @@ const Navbar = () => {
           >
             CONTACT
           </NavLink>
+<<<<<<< HEAD
           <NavLink
             onClick={() => setVisible(false)}
             className="py-2 pl-6 border"
@@ -144,9 +152,15 @@ const Navbar = () => {
           >
             WANTED ITEMS
           </NavLink>
+=======
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
         </div>
       </div>
     </div>
   );
 };
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
 export default Navbar;

@@ -53,3 +53,16 @@ entrypoint = "./functions/reorder/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/reorder/*.html" ]
+<<<<<<< HEAD
+=======
+
+[functions.extendDepositHold]
+enabled = true
+verify_jwt = true
+import_map = "./functions/extendDepositHold/deno.json"
+entrypoint = "./functions/extendDepositHold/index.ts"
+
+[cron.jobs.extendDepositHold]
+schedule = "0 * * * *"
+command = "extendDepositHold"
+>>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
