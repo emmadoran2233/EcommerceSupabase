@@ -35,7 +35,6 @@ const ShopContextProvider = (props) => {
       console.error("Logout Failed:", err.message);
     }
   };
-<<<<<<< HEAD
   // ✅ 改进版 addToCart：支持 rentable 商品 + customization
   const addToCart = async (
     itemId,
@@ -43,10 +42,6 @@ const ShopContextProvider = (props) => {
     rentInfo = null,
     customization = null
   ) => {
-=======
-  // ✅ 改进版 addToCart：支持 rentable 商品
-  const addToCart = async (itemId, size, rentInfo = null) => {
->>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
     const product = products.find((p) => String(p.id) === String(itemId));
 
     if (!product) {
@@ -61,17 +56,13 @@ const ShopContextProvider = (props) => {
     }
 
     // ✅ 对租赁商品固定用 key 'rent'
-<<<<<<< HEAD
     let baseSizeKey = product.rentable ? "rent" : size;
-=======
->>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
     let sizeKey;
     if (product.rentable && rentInfo?.startDate && rentInfo?.endDate) {
       const start = new Date(rentInfo.startDate).toISOString().split("T")[0];
       const end = new Date(rentInfo.endDate).toISOString().split("T")[0];
       sizeKey = `rent_${start}_to_${end}`; // ✅ 每个租期生成唯一 key
     } else {
-<<<<<<< HEAD
       sizeKey = baseSizeKey;
     }
 
@@ -93,9 +84,6 @@ const ShopContextProvider = (props) => {
         lines: trimmedLines,
       };
       sizeKey = `${baseSizeKey}|custom:${customId}`;
-=======
-      sizeKey = product.rentable ? "rent" : size;
->>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
     }
 
     let cartData = structuredClone(cartItems);
@@ -107,7 +95,6 @@ const ShopContextProvider = (props) => {
         quantity: 1,
         rentInfo: rentInfo || {},
       };
-<<<<<<< HEAD
     } else if (customizationPayload) {
       const existing = cartData[itemId][sizeKey];
       const currentQty =
@@ -119,8 +106,6 @@ const ShopContextProvider = (props) => {
         customization: customizationPayload,
         baseSize: size,
       };
-=======
->>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
     } else {
       cartData[itemId][sizeKey] = (cartData[itemId][sizeKey] || 0) + 1;
     }
@@ -176,7 +161,6 @@ const ShopContextProvider = (props) => {
     }
   };
 
-<<<<<<< HEAD
   const getCartAmount = () => {
     let totalAmount = 0;
     for (const productId in cartItems) {
@@ -196,96 +180,6 @@ const ShopContextProvider = (props) => {
     }
     return totalAmount;
   };
-=======
-    const getCartTotals = () => {
-      let rentSubtotal = 0;
-      let purchaseSubtotal = 0;
-      let depositTotal = 0;
-      const rentItemsSummary = [];
-      let maxRentalEndDate = null;
-
-      const ensureNumber = (value) => {
-        if (value == null) return 0;
-        if (typeof value === "number") return Number.isFinite(value) ? value : 0;
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : 0;
-      };
-
-      for (const productId in cartItems) {
-        const product = products.find((p) => String(p.id) === String(productId));
-        if (!product) continue;
-
-        for (const sizeKey in cartItems[productId]) {
-          const entry = cartItems[productId][sizeKey];
-          const quantity =
-            typeof entry === "object" && typeof entry.quantity === "number"
-              ? entry.quantity
-              : typeof entry === "number"
-                ? entry
-                : 1;
-          const rentInfo =
-            typeof entry === "object" && entry.rentInfo ? entry.rentInfo : null;
-
-          if (rentInfo) {
-            const rentFee = ensureNumber(rentInfo.rentFee);
-            const deposit = ensureNumber(rentInfo.deposit);
-            rentSubtotal += rentFee;
-            depositTotal += deposit;
-
-            const endDate =
-              rentInfo.endDate instanceof Date
-                ? rentInfo.endDate
-                : rentInfo.endDate
-                  ? new Date(rentInfo.endDate)
-                  : null;
-            if (
-              endDate &&
-              (!maxRentalEndDate || endDate.getTime() > maxRentalEndDate.getTime())
-            ) {
-              maxRentalEndDate = endDate;
-            }
-
-            rentItemsSummary.push({
-              productId,
-              productName: product.name,
-              rentFee,
-              deposit,
-              startDate:
-                rentInfo.startDate instanceof Date
-                  ? rentInfo.startDate.toISOString()
-                  : rentInfo.startDate
-                    ? new Date(rentInfo.startDate).toISOString()
-                    : null,
-              endDate: endDate ? endDate.toISOString() : null,
-              days: rentInfo.days ?? null,
-              productPrice: ensureNumber(product.price),
-              quantity,
-              sizeKey,
-            });
-          } else {
-            const unitPrice = ensureNumber(product.price);
-            if (quantity > 0 && unitPrice > 0) {
-              purchaseSubtotal += unitPrice * quantity;
-            }
-          }
-        }
-      }
-
-      const dueTodaySubtotal = rentSubtotal + purchaseSubtotal;
-      return {
-        rentSubtotal,
-        purchaseSubtotal,
-        depositTotal,
-        dueTodaySubtotal,
-        rentItemsSummary,
-        maxRentalEndDate: maxRentalEndDate
-          ? maxRentalEndDate.toISOString()
-          : null,
-      };
-    };
-
-    const getCartAmount = () => getCartTotals().dueTodaySubtotal;
->>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
 
   const getUserCart = async (userId) => {
     try {
@@ -358,10 +252,6 @@ const ShopContextProvider = (props) => {
     getCartCount,
     updateQuantity,
     getCartAmount,
-<<<<<<< HEAD
-=======
-    getCartTotals,
->>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
     navigate,
     backendUrl,
     setToken,

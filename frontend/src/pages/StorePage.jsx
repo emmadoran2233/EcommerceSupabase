@@ -161,7 +161,7 @@ const StorePage = () => {
             ))}
           </div>
         ) : (
-          <p className="text-gray-500 text-sm">No items available for rent.</p>
+          <p className="text-gray-500 text-sm">No items or services available.</p>
         )}
       </div>
     </div>
