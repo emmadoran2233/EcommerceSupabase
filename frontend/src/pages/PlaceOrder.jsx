@@ -63,15 +63,26 @@ const onSubmitHandler = async (event) => {
 
             let orderItems = []
 
-            for (const items in cartItems) {
-                for (const item in cartItems[items]) {
-                    if (cartItems[items][item] > 0) {
-                        const itemInfo = structuredClone(products.find(product => product.id === items))
-                        if (itemInfo) {
-                            itemInfo.size = item
-                            itemInfo.quantity = cartItems[items][item]
-                            orderItems.push(itemInfo)
+            for (const productId in cartItems) {
+                for (const sizeKey in cartItems[productId]) {
+                    const entry = cartItems[productId][sizeKey]
+                    const quantity = typeof entry === "object" ? entry.quantity : entry
+                    if (!quantity || quantity <= 0) continue
+
+                    const itemInfo = structuredClone(products.find(product => product.id === productId))
+                    if (itemInfo) {
+                        itemInfo.size = typeof entry === "object" && entry.baseSize
+                            ? entry.baseSize
+                            : sizeKey.split("|custom:")[0]
+                        itemInfo.size_key = sizeKey
+                        itemInfo.quantity = quantity
+                        if (typeof entry === "object" && entry.customization) {
+                            itemInfo.customization = entry.customization
                         }
+                        if (typeof entry === "object" && entry.rentInfo) {
+                            itemInfo.rentInfo = entry.rentInfo
+                        }
+                        orderItems.push(itemInfo)
                     }
                 }
             }

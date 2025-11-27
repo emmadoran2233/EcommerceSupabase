@@ -39,13 +39,21 @@ const Cart = () => {
 
           const quantity = typeof item === "object" ? item.quantity : item;
           const rentInfo = typeof item === "object" ? item.rentInfo : null;
+          const customization =
+            typeof item === "object" ? item.customization : null;
+          const baseSize =
+            typeof item === "object" && item.baseSize
+              ? item.baseSize
+              : sizeKey.split("|custom:")[0];
 
           if (quantity > 0) {
             tempData.push({
               id: productId,
-              size: sizeKey,
+              sizeKey,
+              displaySize: baseSize,
               quantity,
               rentInfo,
+              customization,
               productData: product,
             });
           }
@@ -73,8 +81,8 @@ const Cart = () => {
               const imageSrc = productData.images?.[0] || "";
 
               return (
-                <div
-                  key={`${item.id}-${item.size}`}
+            <div
+              key={`${item.id}-${item.sizeKey}`}
                   className="py-4 border-t border-b text-gray-700 grid grid-cols-[4fr_0.5fr_0.5fr]"
                 >
                   <div className="flex items-start gap-6">
@@ -103,7 +111,7 @@ const Cart = () => {
                           </p>
                           <img
                             onClick={() =>
-                              updateQuantity(item.id, item.size, 0)
+                              updateQuantity(item.id, item.sizeKey, 0)
                             }
                             src={assets.bin_icon}
                             alt="delete"
@@ -113,32 +121,55 @@ const Cart = () => {
                         </div>
                       ) : (
                         // ✅ 普通商品显示 size / quantity
-                        <div className="flex items-center gap-5 mt-2">
-                          <p>{currency + productData.price}</p>
-                          <p className="px-2 sm:px-3 sm:py-1 border bg-slate-50">
-                            {item.size}
-                          </p>
-                          <div className="flex items-center gap-3 mt-2">
-                            <input
-                              type="number"
-                              min="0"
-                              defaultValue={item.quantity}
-                              onChange={(e) => {
-                                const value = Number(e.target.value);
-                                if (isNaN(value)) return;
-                                updateQuantity(item.id, item.size, value);
-                              }}
-                              className="border w-16 text-center"
-                            />
-                            <img
-                              onClick={() =>
-                                updateQuantity(item.id, item.size, 0)
-                              }
-                              src={assets.bin_icon}
-                              alt="delete"
-                              className="w-5 cursor-pointer hover:opacity-60 transition"
-                            />
+                        <div className="flex flex-col gap-2 mt-2">
+                          <div className="flex items-center gap-5">
+                            <div>
+                              <p>{currency + productData.price}</p>
+                              <p className="px-2 sm:px-3 sm:py-1 border bg-slate-50 inline-block mt-1">
+                                {item.displaySize}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3 mt-2">
+                              <input
+                                type="number"
+                                min="0"
+                                defaultValue={item.quantity}
+                                onChange={(e) => {
+                                  const value = Number(e.target.value);
+                                  if (isNaN(value)) return;
+                                  updateQuantity(item.id, item.sizeKey, value);
+                                }}
+                                className="border w-16 text-center"
+                              />
+                              <img
+                                onClick={() =>
+                                  updateQuantity(item.id, item.sizeKey, 0)
+                                }
+                                src={assets.bin_icon}
+                                alt="delete"
+                                className="w-5 cursor-pointer hover:opacity-60 transition"
+                              />
+                            </div>
                           </div>
+                          {item.customization && (
+                            <div className="text-xs text-gray-500 space-y-1">
+                              <p className="font-medium flex items-center gap-1">
+                                ✏️ Custom Text
+                                <span
+                                  className="inline-block w-3 h-3 rounded-full border"
+                                  style={{
+                                    backgroundColor:
+                                      item.customization.color || "#111827",
+                                  }}
+                                />
+                              </p>
+                              <p>
+                                {item.customization.lines
+                                  ?.filter((line) => line)
+                                  .join(" • ")}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

@@ -35,8 +35,13 @@ const ShopContextProvider = (props) => {
       console.error("Logout Failed:", err.message);
     }
   };
-  // ✅ 改进版 addToCart：支持 rentable 商品
-  const addToCart = async (itemId, size, rentInfo = null) => {
+  // ✅ 改进版 addToCart：支持 rentable 商品 + customization
+  const addToCart = async (
+    itemId,
+    size,
+    rentInfo = null,
+    customization = null
+  ) => {
     const product = products.find((p) => String(p.id) === String(itemId));
 
     if (!product) {
@@ -51,13 +56,34 @@ const ShopContextProvider = (props) => {
     }
 
     // ✅ 对租赁商品固定用 key 'rent'
+    let baseSizeKey = product.rentable ? "rent" : size;
     let sizeKey;
     if (product.rentable && rentInfo?.startDate && rentInfo?.endDate) {
       const start = new Date(rentInfo.startDate).toISOString().split("T")[0];
       const end = new Date(rentInfo.endDate).toISOString().split("T")[0];
       sizeKey = `rent_${start}_to_${end}`; // ✅ 每个租期生成唯一 key
     } else {
-      sizeKey = product.rentable ? "rent" : size;
+      sizeKey = baseSizeKey;
+    }
+
+    let customizationPayload = null;
+    if (
+      !product.rentable &&
+      product.is_customizable &&
+      customization?.lines?.some((line) => line.trim().length > 0)
+    ) {
+      const trimmedLines = customization.lines.map((line) => line.trim());
+      const customId =
+        customization.id ||
+        (globalThis.crypto?.randomUUID
+          ? crypto.randomUUID()
+          : `custom-${Date.now()}`);
+      customizationPayload = {
+        ...customization,
+        id: customId,
+        lines: trimmedLines,
+      };
+      sizeKey = `${baseSizeKey}|custom:${customId}`;
     }
 
     let cartData = structuredClone(cartItems);
@@ -68,6 +94,17 @@ const ShopContextProvider = (props) => {
       cartData[itemId][sizeKey] = {
         quantity: 1,
         rentInfo: rentInfo || {},
+      };
+    } else if (customizationPayload) {
+      const existing = cartData[itemId][sizeKey];
+      const currentQty =
+        typeof existing === "object"
+          ? existing.quantity || 0
+          : Number(existing) || 0;
+      cartData[itemId][sizeKey] = {
+        quantity: currentQty + 1,
+        customization: customizationPayload,
+        baseSize: size,
       };
     } else {
       cartData[itemId][sizeKey] = (cartData[itemId][sizeKey] || 0) + 1;
