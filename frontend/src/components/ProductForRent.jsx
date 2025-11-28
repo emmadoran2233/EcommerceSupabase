@@ -3,16 +3,16 @@ import { ShopContext } from '../context/ShopContext'
 import Title from './Title';
 import ProductItem from './ProductItem';
 
-const BestSeller = () => {
+const ProductForRent = () => {
 
   const { products } = useContext(ShopContext);
-  const [bestSeller, setBestSeller] = useState([]);
+  const [productsForRent, setProductsForRent] = useState([]);
 
   useEffect(() => {
-    const bestProduct = products.filter(
-      (item) => item.bestseller === true && item.rentable === true
+    const rentProduct = products.filter(
+      (item) => item.rentable === true
     );
-    setBestSeller(bestProduct);
+    setProductsForRent(rentProduct);
   }, [products]);
 
 
@@ -27,7 +27,7 @@ const BestSeller = () => {
 
       <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 gap-y-6'>
         {
-          bestSeller.map((item, index) => (
+          productsForRent.map((item, index) => (
             <ProductItem key={index} id={item.id} name={item.name} image={item.images} price={item.price} />
           ))
         }
@@ -36,4 +36,4 @@ const BestSeller = () => {
   )
 }
 
-export default BestSeller
+export default ProductForRent
