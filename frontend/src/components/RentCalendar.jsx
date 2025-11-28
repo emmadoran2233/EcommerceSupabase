@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { DateRange } from "react-date-range";
-import { differenceInCalendarDays } from "date-fns";
+import {
+  differenceInCalendarDays,
+  addDays,
+  isBefore,
+  startOfDay,
+} from "date-fns";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 
@@ -18,22 +23,24 @@ const RentCalendar = ({ dailyRate, productPrice, onRentChange }) => {
   const [deposit, setDeposit] = useState(0);
   const [finalTotal, setFinalTotal] = useState(0);
   const prevPayloadRef = useRef(null);
+  // earliest selectable date: three days from today
+  const minSelectableDate = startOfDay(new Date());
   useEffect(() => {
     const start = range[0].startDate;
     const end = range[0].endDate;
-
     if (start && end) {
       const diff = differenceInCalendarDays(end, start) + 1;
       const rentFeeCalc = diff * dailyRate;
-      const depositCalc = Math.max(productPrice - rentFeeCalc, 0);  // ✅ 商品原价 − rentFee，最低为0
-      const totalCalc = rentFeeCalc >= productPrice ? rentFeeCalc : rentFeeCalc + depositCalc;
+      const depositCalc = Math.max(productPrice - rentFeeCalc, 0); // ✅ 商品原价 − rentFee，最低为0
+      const totalCalc =
+        rentFeeCalc >= productPrice ? rentFeeCalc : rentFeeCalc + depositCalc;
 
       setDays(diff);
       setRentFee(rentFeeCalc);
       setDeposit(depositCalc);
       setFinalTotal(totalCalc);
 
-         const payload = {
+      const payload = {
         startDate: start,
         endDate: end,
         days: diff,
@@ -65,7 +72,7 @@ const RentCalendar = ({ dailyRate, productPrice, onRentChange }) => {
       if (finalTotal !== 0) setFinalTotal(0);
       prevPayloadRef.current = null;
     }
-  }, [range, dailyRate, productPrice, onRentChange]);
+  }, [range, dailyRate, productPrice, onRentChange, minSelectableDate]);
 
   return (
     <div className="p-4 border rounded-lg mt-4 bg-gray-50">
@@ -75,11 +82,14 @@ const RentCalendar = ({ dailyRate, productPrice, onRentChange }) => {
         ranges={range}
         onChange={(item) => setRange([item.selection])}
         rangeColors={["#4F46E5"]}
+        minDate={minSelectableDate}
       />
 
       {days > 0 ? (
         <div className="mt-3 text-sm text-gray-700">
-          <p>Duration: {days} day{days > 1 ? "s" : ""}</p>
+          <p>
+            Duration: {days} day{days > 1 ? "s" : ""}
+          </p>
           <p> Rent Rate: $20/day</p>
           <p> Rent Fee: ${rentFee.toFixed(2)}</p>
           <p> Deposit: ${deposit.toFixed(2)}</p>
@@ -89,7 +99,7 @@ const RentCalendar = ({ dailyRate, productPrice, onRentChange }) => {
         </div>
       ) : (
         <p className="text-sm text-gray-500 mt-3">
-          → Please select rental dates
+          → Please select rental dates (start date must be today or later)
         </p>
       )}
     </div>
