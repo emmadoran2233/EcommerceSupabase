@@ -16,6 +16,8 @@ const ShopContextProvider = (props) => {
   const [products, setProducts] = useState([]);
   const [token, setToken] = useState("");
   const [userId, setUserId] = useState("");
+  const [user, setUser] = useState(null);
+
   const navigate = useNavigate();
   const logout = async (navigate) => {
     try {
@@ -238,6 +240,48 @@ const ShopContextProvider = (props) => {
     }
   }, []);
 
+  useEffect(() => {
+  const initAuth = async () => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error("Auth init error:", error);
+      return;
+    }
+
+    if (data.session?.user) {
+      const u = data.session.user;
+      setUser(u);
+      setUserId(u.id);
+      setToken(data.session.access_token);
+      localStorage.setItem("token", data.session.access_token);
+      localStorage.setItem("user_id", u.id);
+      getUserCart(u.id);
+    }
+  };
+
+  initAuth();
+
+  const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (session?.user) {
+      const u = session.user;
+      setUser(u);
+      setUserId(u.id);
+      setToken(session.access_token);
+      localStorage.setItem("token", session.access_token);
+      localStorage.setItem("user_id", u.id);
+      getUserCart(u.id);
+    } else {
+      setUser(null);
+      setUserId("");
+      setToken("");
+      setCartItems({});
+      localStorage.removeItem("token");
+      localStorage.removeItem("user_id");
+    }
+  });
+
+  return () => listener.subscription.unsubscribe();
+}, []);
   const value = {
     products,
     currency,
@@ -260,6 +304,8 @@ const ShopContextProvider = (props) => {
     userId,
     getUserCart,
     logout,
+    user,
+    setUser,
   };
 
   return (
