@@ -5,7 +5,12 @@ import { supabase } from "../supabaseClient";
 const Profile = () => {
   const { user, navigate, logout } = useContext(ShopContext);
   const [editing, setEditing] = useState(false);
-  const [newName, setNewName] = useState(user?.name || "");
+  const userName =
+    user?.user_metadata?.name ||
+    user?.user_metadata?.full_name ||
+    user?.name ||
+    "";
+  const [newName, setNewName] = useState(userName);
 
   const handleSave = async () => {
     const { data, error } = await supabase.auth.updateUser({
@@ -44,7 +49,7 @@ const Profile = () => {
         {!editing ? (
           <div className="flex items-center justify-between">
             <p>
-              <b>Name:</b> {user.name}
+              <b>Name:</b> {userName}
             </p>
             <button
               onClick={() => setEditing(true)}

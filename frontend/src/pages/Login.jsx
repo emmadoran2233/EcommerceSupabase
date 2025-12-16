@@ -4,7 +4,7 @@ import { supabase } from "../supabaseClient";
 import { toast } from "react-toastify";
 const Login = () => {
   const [currentState, setCurrentState] = useState("Login");
-  const { token, setToken, navigate } = useContext(ShopContext);
+  const { token, setToken, setUser, setUserId, navigate } = useContext(ShopContext);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -31,11 +31,13 @@ const Login = () => {
           return;
         }
 
-        const userId = data?.user?.id || data?.session?.user?.id || null;
+        const signedInUser = data?.user ?? data?.session?.user ?? null;
+        const userId = signedInUser?.id || null;
         const accessToken = data?.session?.access_token || "";
 
         if (userId) {
           localStorage.setItem("user_id", userId);
+          setUserId(userId);
           console.log("user_id saved:", userId);
         } else {
           console.warn("user_id missing in signUp:", data);
@@ -46,7 +48,14 @@ const Login = () => {
           localStorage.setItem("token", accessToken);
         }
 
-        toast.success("Account created successfully!");
+        // If email confirmations are enabled, Supabase may return no session here.
+        // In that case, user isn't actually signed in yet.
+        if (signedInUser && accessToken) {
+          setUser(signedInUser);
+          toast.success("Account created successfully!");
+        } else {
+          toast.success("Account created! Please check your email to confirm, then sign in.");
+        }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -58,16 +67,13 @@ const Login = () => {
           return;
         }
 
-        const userId =
-          data?.user?.id ||
-          data?.session?.user?.id ||
-          data?.session?.user?.aud ||
-          null;
-
+        const signedInUser = data?.user ?? data?.session?.user ?? null;
+        const userId = signedInUser?.id || null;
         const accessToken = data?.session?.access_token || "";
 
         if (userId) {
           localStorage.setItem("user_id", userId);
+          setUserId(userId);
           console.log("✅ user_id saved:", userId);
         } else {
           console.warn("⚠️ user_id not found in session", data);
@@ -76,6 +82,11 @@ const Login = () => {
         if (accessToken) {
           setToken(accessToken);
           localStorage.setItem("token", accessToken);
+        }
+
+        // Ensure the rest of the app (Profile/WantedItems/etc.) sees the user immediately.
+        if (signedInUser) {
+          setUser(signedInUser);
         }
 
         toast.success("Login successful!");
