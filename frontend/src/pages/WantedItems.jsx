@@ -9,6 +9,25 @@ import { toast } from 'react-toastify';
 import { supabase } from '../supabaseClient';
 import { ShopContext } from '../context/ShopContext';
 
+const ThumbIcon = ({ active }) => (
+  <svg
+    viewBox="0 0 24 24"
+    className={`w-4 h-4 transition-colors ${
+      active ? 'text-white' : 'text-gray-500'
+    }`}
+    aria-hidden="true"
+  >
+    <path
+      fill="currentColor"
+      d="M2 10.25A1.25 1.25 0 0 1 3.25 9h2.5A1.25 1.25 0 0 1 7 10.25v8.5A1.25 1.25 0 0 1 5.75 20h-2.5A1.25 1.25 0 0 1 2 18.75z"
+    />
+    <path
+      fill="currentColor"
+      d="M9.5 10.5 11 4.83A2 2 0 0 1 12.92 3h.58A2 2 0 0 1 15 5v4h4.36a1.5 1.5 0 0 1 1.39 2.06l-2.12 6a3 3 0 0 1-2.82 2H9.75A1.75 1.75 0 0 1 8 17.25v-5.5a1.75 1.75 0 0 1 1.5-1.72Z"
+    />
+  </svg>
+);
+
 const WantedItems = () => {
   const { userId, navigate } = useContext(ShopContext);
   const [requests, setRequests] = useState([]);
@@ -18,6 +37,7 @@ const WantedItems = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [likedIds, setLikedIds] = useState(new Set());
+  const [optimisticLikes, setOptimisticLikes] = useState({});
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -57,6 +77,7 @@ const WantedItems = () => {
         }
 
         setRequests(data ?? []);
+        setOptimisticLikes({});
 
         if (userId) {
           const { data: likedData, error: likedError } = await supabase
@@ -94,46 +115,88 @@ const WantedItems = () => {
       return;
     }
 
-    if (likedIds.has(requestId)) {
-      toast.info('You have already liked this request.');
-      return;
-    }
+    const alreadyLiked = likedIds.has(requestId);
 
     try {
       setLiking((prev) => ({ ...prev, [requestId]: true }));
 
-      const { error: likeError } = await supabase
-        .from('request_likes')
-        .insert([{ request_id: requestId, user_id: userId }]);
+      if (!alreadyLiked) {
+        const { error: likeError } = await supabase
+          .from('request_likes')
+          .insert([{ request_id: requestId, user_id: userId }]);
 
-      if (likeError && likeError.code !== '23505') {
-        throw likeError;
+        if (likeError && likeError.code !== '23505') {
+          throw likeError;
+        }
+
+        if (likeError && likeError.code === '23505') {
+          toast.info('You have already liked this request.');
+          setLikedIds((prev) => new Set(prev).add(requestId));
+        } else {
+          const { error: updateError } = await supabase
+            .from('requests')
+            .update({ likes: (currentLikes ?? 0) + 1 })
+            .eq('id', requestId);
+
+          if (updateError) {
+            throw updateError;
+          }
+
+          toast.success('Thanks for supporting this request!');
+          setLikedIds((prev) => {
+            const next = new Set(prev);
+            next.add(requestId);
+            return next;
+          });
+          setOptimisticLikes((prev) => ({
+            ...prev,
+            [requestId]:
+              (prev[requestId] ?? (currentLikes ?? 0)) + 1,
+          }));
+        }
+      } else {
+        const { error: deleteError } = await supabase
+          .from('request_likes')
+          .delete()
+          .eq('request_id', requestId)
+          .eq('user_id', userId);
+
+        if (deleteError) {
+          throw deleteError;
+        }
+
+        const nextLikes = Math.max((currentLikes ?? 1) - 1, 0);
+        const { error: updateError } = await supabase
+          .from('requests')
+          .update({ likes: nextLikes })
+          .eq('id', requestId);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        toast.info('Removed your like.');
+        setLikedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(requestId);
+          return next;
+        });
+        setOptimisticLikes((prev) => ({
+          ...prev,
+          [requestId]: Math.max(
+            (prev[requestId] ?? (currentLikes ?? 1)) - 1,
+            0
+          ),
+        }));
       }
-
-      if (likeError && likeError.code === '23505') {
-        toast.info('You have already liked this request.');
-        setLikedIds((prev) => new Set(prev).add(requestId));
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from('requests')
-        .update({ likes: (currentLikes ?? 0) + 1 })
-        .eq('id', requestId);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      toast.success('Thanks for supporting this request!');
       await fetchRequests({ silent: true });
-      setLikedIds((prev) => {
-        const next = new Set(prev);
-        next.add(requestId);
-        return next;
-      });
     } catch (error) {
-      toast.error(error.message || 'Unable to register your like.');
+      toast.error(
+        error.message ||
+          (alreadyLiked
+            ? 'Unable to remove your like.'
+            : 'Unable to register your like.')
+      );
     } finally {
       setLiking((prev) => ({ ...prev, [requestId]: false }));
     }
@@ -197,52 +260,60 @@ const WantedItems = () => {
         </p>
       ) : (
         <div className="max-w-3xl mx-auto flex flex-col gap-4">
-          {requests.map((request) => (
-            <div
-              key={request.id}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border rounded-xl px-5 py-4 bg-white shadow-sm"
-            >
-              <div className="flex items-center gap-4">
-                {request.image_url && (
-                  <img
-                    src={request.image_url}
-                    alt={request.item_name}
-                    className="w-20 h-20 object-cover rounded-lg border"
-                  />
-                )}
-                <div>
-                  <p className="text-lg font-medium text-gray-900">
-                    {request.item_name}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    Added {new Date(request.created_at).toLocaleDateString()}
-                  </p>
+          {requests.map((request) => {
+            const isLiked = likedIds.has(request.id);
+            const isSaving = Boolean(liking[request.id]);
+            const displayLikes = Math.max(
+              0,
+              optimisticLikes[request.id] ?? request.likes ?? 0
+            );
+
+            return (
+              <div
+                key={request.id}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border rounded-xl px-5 py-4 bg-white shadow-sm"
+              >
+                <div className="flex items-center gap-4">
+                  {request.image_url && (
+                    <img
+                      src={request.image_url}
+                      alt={request.item_name}
+                      className="w-20 h-20 object-cover rounded-lg border"
+                    />
+                  )}
+                  <div>
+                    <p className="text-lg font-medium text-gray-900">
+                      {request.item_name}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Added {new Date(request.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => handleLike(request.id, displayLikes)}
+                    disabled={isSaving}
+                    className={`flex items-center gap-3 text-xs font-semibold px-4 py-2 rounded-full border transition-colors disabled:cursor-not-allowed ${
+                      isLiked
+                        ? 'bg-red-500 border-red-500 text-white'
+                        : 'bg-white border-gray-300 text-gray-900 hover:border-gray-400 disabled:bg-gray-200 disabled:text-gray-400'
+                    }`}
+                  >
+                    <span className="text-base font-bold">{displayLikes}</span>
+                    <ThumbIcon active={isLiked} />
+                    <span className="text-[11px] uppercase tracking-wide">
+                      {isLiked
+                        ? 'Liked'
+                        : isSaving
+                          ? 'Saving...'
+                          : '+1 Like'}
+                    </span>
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <p className="text-sm font-semibold text-gray-700">
-                  {request.likes ?? 0} likes
-                </p>
-                <button
-                  onClick={() => handleLike(request.id, request.likes ?? 0)}
-                  disabled={
-                    Boolean(liking[request.id]) || likedIds.has(request.id)
-                  }
-                  className={`text-xs font-semibold px-4 py-2 rounded-full ${
-                    likedIds.has(request.id)
-                      ? 'bg-red-500 text-white cursor-not-allowed'
-                      : 'bg-black text-white disabled:bg-gray-400'
-                  }`}
-                >
-                  {likedIds.has(request.id)
-                    ? 'Liked'
-                    : liking[request.id]
-                      ? 'Saving...'
-                      : '+1 LIKE'}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

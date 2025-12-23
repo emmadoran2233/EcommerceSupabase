@@ -19,6 +19,7 @@ const PlaceOrder = () => {
     backendUrl,
     user,
     userId,
+    token,
   } = useContext(ShopContext);
 
   const [formData, setFormData] = useState({
