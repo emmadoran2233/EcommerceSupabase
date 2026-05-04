@@ -40,6 +40,40 @@ const PlaceOrder = () => {
     setFormData((data) => ({ ...data, [name]: value }));
   };
 
+  const sendOrderSubmittedEmail = async (orderId) => {
+    if (!orderId) return;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sendOrderEmails`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            orderId,
+            eventType: "order_submitted",
+          }),
+          signal: controller.signal,
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        console.warn("Order email failed:", data.error || response.statusText);
+      }
+    } catch (error) {
+      console.warn("Order email failed:", error);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
   const initPay = (order) => {
     const options = {
       key: import.meta.env.VITE_RAZORPAY_KEY_ID,
@@ -125,10 +159,15 @@ const PlaceOrder = () => {
       switch (method) {
         /* ---------------------- COD ---------------------- */
         case "cod": {
-          const { error } = await supabase.from("orders").insert([orderData]);
+          const { data: insertedOrder, error } = await supabase
+            .from("orders")
+            .insert([orderData])
+            .select("id")
+            .single();
           if (error) {
             toast.error(error.message);
           } else {
+            await sendOrderSubmittedEmail(insertedOrder?.id);
             setCartItems({});
             navigate("/orders");
             toast.success("Order placed successfully!");
@@ -150,6 +189,8 @@ const PlaceOrder = () => {
           }
 
           const orderId = insertedOrder?.id;
+          await sendOrderSubmittedEmail(orderId);
+
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verifyStripe`,
             {
@@ -189,6 +230,8 @@ const PlaceOrder = () => {
           }
 
           const orderId = insertedOrder?.id;
+          await sendOrderSubmittedEmail(orderId);
+
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verifyGooglePay`,
             {
@@ -216,11 +259,17 @@ const PlaceOrder = () => {
 
         /* ---------------------- RAZORPAY ---------------------- */
         case "razorpay": {
-          const { error } = await supabase.from("orders").insert([orderData]);
+          const { data: insertedOrder, error } = await supabase
+            .from("orders")
+            .insert([orderData])
+            .select("id")
+            .single();
           if (error) {
             toast.error(error.message);
             return;
           }
+
+          await sendOrderSubmittedEmail(insertedOrder?.id);
 
           const responseRazorpay = await axios.post(
             backendUrl + "/api/order/razorpay",
