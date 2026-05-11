@@ -24,6 +24,7 @@ const Login = () => {
       const { error } = await supabase.functions.invoke("sendWelcomeEmail", {
         body: {
           userId,
+          email,
           name,
           role: "buyer",
         },
@@ -34,6 +35,23 @@ const Login = () => {
       }
     } catch (error) {
       console.warn("Welcome email failed:", error);
+    }
+  };
+
+  const syncPublicUser = async (userId) => {
+    if (!userId || !email) return;
+
+    const { error } = await supabase.from("users").upsert(
+      {
+        id: userId,
+        email,
+        cartData: {},
+      },
+      { onConflict: "id" }
+    );
+
+    if (error) {
+      console.warn("Public user sync failed:", error.message || error);
     }
   };
 
@@ -60,6 +78,7 @@ const Login = () => {
         if (userId) {
           localStorage.setItem("user_id", userId);
           setUserId(userId);
+          await syncPublicUser(userId);
           await sendWelcomeEmail(userId);
           console.log("user_id saved:", userId);
         } else {

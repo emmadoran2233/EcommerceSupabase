@@ -41,6 +41,13 @@ type WelcomeRole = keyof typeof roleConfig;
 const normalizeRole = (value: unknown): WelcomeRole =>
   value === "seller" ? "seller" : "buyer";
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const normalizeEmail = (value: unknown) => {
+  const email = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
+};
+
 const getSiteUrl = (role: WelcomeRole) => {
   if (role === "seller") {
     return (
@@ -68,6 +75,7 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const userId = typeof body.userId === "string" ? body.userId : "";
+    const submittedEmail = normalizeEmail(body.email);
     const role = normalizeRole(body.role);
 
     if (!userId) {
@@ -77,22 +85,37 @@ serve(async (req) => {
       );
     }
 
-    const { data, error } = await supabase.auth.admin.getUserById(userId);
-    if (error || !data.user?.email) {
+    let user = null;
+    let lookupError = "";
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const { data, error } = await supabase.auth.admin.getUserById(userId);
+      if (data.user?.email) {
+        user = data.user;
+        break;
+      }
+
+      lookupError = error?.message || "User email not found";
+      if (attempt < 2) {
+        await sleep(300);
+      }
+    }
+
+    const recipientEmail = user?.email || submittedEmail;
+    if (!recipientEmail) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: error?.message || "User email not found",
+          error: lookupError || "User email not found",
         }),
         { status: 404, headers: corsHeaders }
       );
     }
 
-    const user = data.user;
     const config = roleConfig[role];
     const displayName =
-      String(user.user_metadata?.name || body.name || "").trim() ||
-      user.email.split("@")[0];
+      String(user?.user_metadata?.name || body.name || "").trim() ||
+      recipientEmail.split("@")[0];
     const siteUrl = getSiteUrl(role).replace(/\/$/, "");
     const dashboardUrl = `${siteUrl}${config.dashboardPath}`;
 
@@ -118,14 +141,14 @@ serve(async (req) => {
 
     const result = await sendTransactionalEmail({
       supabase,
-      to: user.email,
+      to: recipientEmail,
       subject: config.subject,
       html,
       text,
       eventType: "user_registered",
       recipientRole: config.recipientRole,
-      userId: user.id,
-      idempotencyKey: `user_registered:${role}:${user.id}`,
+      userId,
+      idempotencyKey: `user_registered:${role}:${userId}`,
     });
 
     return new Response(JSON.stringify({ success: true, result }), {
