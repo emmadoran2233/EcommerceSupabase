@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { ShopContext } from "../context/ShopContext";
 import { supabase } from "../supabaseClient";
 import { toast } from "react-toastify";
@@ -8,13 +8,35 @@ const Login = () => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
-  const [showResetPassword, setShowResetPassword] = useState(false);
+  //check: do we have reset password menu
+  // const [showResetPassword, setShowResetPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const redirectUrl =
-  (typeof window !== "undefined" && window.location?.origin?.trim()) ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:5173"
-    : "https://www.reshareloop.com");
+    (typeof window !== "undefined" && window.location?.origin?.trim()) ||
+    (import.meta.env.DEV
+      ? "http://localhost:5173"
+      : "https://www.reshareloop.com");
+
+  const sendWelcomeEmail = async (userId) => {
+    if (!userId) return;
+
+    try {
+      const { error } = await supabase.functions.invoke("sendWelcomeEmail", {
+        body: {
+          userId,
+          name,
+          role: "buyer",
+        },
+      });
+
+      if (error) {
+        console.warn("Welcome email failed:", error.message || error);
+      }
+    } catch (error) {
+      console.warn("Welcome email failed:", error);
+    }
+  };
+
   const onSubmitHandler = async (event) => {
     event.preventDefault();
     try {
@@ -38,6 +60,7 @@ const Login = () => {
         if (userId) {
           localStorage.setItem("user_id", userId);
           setUserId(userId);
+          await sendWelcomeEmail(userId);
           console.log("user_id saved:", userId);
         } else {
           console.warn("user_id missing in signUp:", data);
@@ -101,7 +124,7 @@ const Login = () => {
     if (token) {
       navigate("/");
     }
-  }, [token]);
+  }, [token, navigate]);
 
   // Password Reset Function
   const handlePasswordReset = async (e) => {
@@ -117,7 +140,7 @@ const Login = () => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${redirectUrl}/reset-password`,
       });
-      
+
       if (error) {
         console.error("Reset password error:", error);
         toast.error(error.message);
@@ -167,7 +190,7 @@ const Login = () => {
       }
     };
     fetchSession();
-  }, []);
+  }, [navigate, setToken]);
 
   return (
     <form
@@ -228,7 +251,7 @@ const Login = () => {
       </div>
 
       <div className="w-full flex justify-between text-sm mt-[-8px]">
-        <button 
+        <button
           type="button"
           onClick={handlePasswordReset}
           className="cursor-pointer hover:underline text-gray-600 bg-transparent border-none p-0 text-sm"

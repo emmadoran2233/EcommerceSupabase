@@ -9,10 +9,7 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
-<<<<<<< HEAD
-=======
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEPOSIT_AUTH_WINDOW_DAYS = Number(
   Deno.env.get("DEPOSIT_AUTH_WINDOW_DAYS") || "7"
@@ -45,17 +42,15 @@ const mergeDepositMetadata = (
   entry: Record<string, unknown>
 ) => {
   const base =
-    existing && typeof existing === "object" ? { ...existing } : ({} as Record<
-      string,
-      unknown
-    >);
+    existing && typeof existing === "object"
+      ? { ...existing }
+      : ({} as Record<string, unknown>);
   const history = Array.isArray(base.history) ? [...base.history] : [];
   history.push(entry);
   base.history = history;
   base.updated_at = new Date().toISOString();
   return base;
 };
->>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -69,43 +64,23 @@ serve(async (req) => {
     });
   }
 
-  const sig = req.headers.get("stripe-signature")!;
-  const body = await req.text();
+  const sig = req.headers.get("stripe-signature");
+  if (!sig) {
+    return new Response("Missing stripe-signature header", { status: 400 });
+  }
 
+  const body = await req.text();
   let event;
+
   try {
     event = await stripe.webhooks.constructEventAsync(body, sig, endpointSecret);
   } catch (err) {
-    return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+    const message = err instanceof Error ? err.message : String(err);
+    return new Response(`Webhook Error: ${message}`, { status: 400 });
   }
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-<<<<<<< HEAD
-    const orderId = session.metadata?.orderId;
-
-    console.log("Webhook triggered, orderId:", orderId);
-
-    if (orderId) {
-      const { data, error } = await supabase
-        .from("orders")
-        .update({
-          status: "paid",
-          payment: true,
-        })
-        .eq("id", Number(orderId))  
-        .select();
-
-      if (error) {
-        console.error("Supabase update error:", error.message);
-      } else {
-        console.log("Supabase update success:", data);
-      }
-    } else {
-      console.error("orderId missing in session.metadata:", session.metadata);
-    }
-
-=======
     const orderIdRaw = session.metadata?.orderId;
     const orderId = orderIdRaw ? Number(orderIdRaw) : null;
     const sessionCustomer =
@@ -116,8 +91,6 @@ serve(async (req) => {
       typeof session.payment_intent === "string"
         ? session.payment_intent
         : (session.payment_intent as Stripe.PaymentIntent | null)?.id || null;
-
-    console.log("Webhook triggered, orderId:", orderId);
 
     if (!orderId) {
       console.error("orderId missing in session.metadata:", session.metadata);
@@ -141,13 +114,10 @@ serve(async (req) => {
             stripe_payment_intent_id: checkoutPaymentIntentId,
             deposit_customer_id: sessionCustomer || order.deposit_customer_id,
           })
-          .eq("id", orderId)
-          .select();
+          .eq("id", orderId);
 
         if (updateResult.error) {
           console.error("Supabase update error:", updateResult.error.message);
-        } else {
-          console.log("Supabase payment update success:", orderId);
         }
 
         const depositTotal = ensureNumber(order.deposit_total);
@@ -155,7 +125,8 @@ serve(async (req) => {
         if (depositTotal > 0 && !depositAlreadyExists) {
           try {
             let paymentMethodId = order.deposit_payment_method_id || null;
-            let customerId = sessionCustomer || order.deposit_customer_id || null;
+            let customerId =
+              sessionCustomer || order.deposit_customer_id || null;
 
             if (checkoutPaymentIntentId) {
               const checkoutIntent = await stripe.paymentIntents.retrieve(
@@ -214,7 +185,10 @@ serve(async (req) => {
               rentalEnd.getTime() >
                 addDays(authorizedAt, DEPOSIT_AUTH_WINDOW_DAYS - 1).getTime();
             const nextActionAt = needsRenewal
-              ? addDays(authorizedAt, Math.max(DEPOSIT_REAUTHORIZE_INTERVAL_DAYS, 1))
+              ? addDays(
+                  authorizedAt,
+                  Math.max(DEPOSIT_REAUTHORIZE_INTERVAL_DAYS, 1)
+                )
               : null;
 
             const depositMeta = mergeDepositMetadata(
@@ -246,13 +220,6 @@ serve(async (req) => {
                 deposit_metadata: depositMeta,
               })
               .eq("id", orderId);
-
-            console.log(
-              "Deposit authorization created",
-              depositIntent.id,
-              "for order",
-              orderId
-            );
           } catch (depositErr) {
             const errMsg =
               depositErr instanceof Error
@@ -277,7 +244,6 @@ serve(async (req) => {
         }
       }
     }
->>>>>>> 5503b16 (Merged latest updates and added deposit-freeze functionality for rental items)
   }
 
   return new Response(JSON.stringify({ received: true }), {

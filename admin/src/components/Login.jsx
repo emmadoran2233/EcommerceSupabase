@@ -14,9 +14,29 @@ const Login = ({ setToken }) => {
   const redirectUrl =
     (typeof window !== "undefined" &&
       String(window.location?.origin || "").trim()) ||
-    (process.env.NODE_ENV === "development"
+    (import.meta.env.DEV
       ? "http://localhost:5174"
       : "https://admin.reshareloop.com");
+
+  const sendWelcomeEmail = async (userId) => {
+    if (!userId) return;
+
+    try {
+      const { error } = await supabase.functions.invoke("sendWelcomeEmail", {
+        body: {
+          userId,
+          name,
+          role: "seller",
+        },
+      });
+
+      if (error) {
+        console.warn("Welcome email failed:", error.message || error);
+      }
+    } catch (error) {
+      console.warn("Welcome email failed:", error);
+    }
+  };
 
   // -------------------- EMAIL LOGIN --------------------
   const onSubmitHandler = async (e) => {
@@ -27,9 +47,9 @@ const Login = ({ setToken }) => {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { 
+          options: {
             data: { name },
-            emailRedirectTo: `${redirectUrl}/auth/callback`
+            emailRedirectTo: `${redirectUrl}/auth/callback`,
           },
         });
 
@@ -40,22 +60,23 @@ const Login = ({ setToken }) => {
           toast.error(error.message);
           return;
         }
-        
+
         const userId = data?.user?.id || data?.session?.user?.id || null;
         const accessToken = data?.session?.access_token || "";
-        
+
         console.log("User ID:", userId);
         console.log("Access Token:", accessToken);
-        
+
         if (!userId) {
           toast.info("Please check your email to confirm your account before logging in.");
           return;
         }
-        
+
         if (userId) {
           localStorage.setItem("user_id", userId);
+          await sendWelcomeEmail(userId);
         }
-        
+
         if (accessToken) {
           // Auto-confirmed (email confirmation disabled)
           setToken(accessToken);
@@ -84,16 +105,18 @@ const Login = ({ setToken }) => {
           toast.error(error.message);
           return;
         }
-      if (data?.session) {
-        const session = data.session;
-        const sellerId = session.user?.id;
-        setToken(session.access_token);
-        localStorage.setItem("token", session.access_token);
-        localStorage.setItem("user_id", sellerId);
-        toast.success("Login successful!");
-        navigate(`/admin/${sellerId}/add-sell`);
+
+        if (data?.session) {
+          const session = data.session;
+          const sellerId = session.user?.id;
+          setToken(session.access_token);
+          localStorage.setItem("token", session.access_token);
+          localStorage.setItem("user_id", sellerId);
+          toast.success("Login successful!");
+          navigate(`/admin/${sellerId}/add-sell`);
+        }
       }
-    }} catch (error) {
+    } catch (error) {
       console.error(error);
       toast.error(error?.message || "An error occurred");
     }
@@ -289,3 +312,4 @@ const Login = ({ setToken }) => {
 };
 
 export default Login;
+n
