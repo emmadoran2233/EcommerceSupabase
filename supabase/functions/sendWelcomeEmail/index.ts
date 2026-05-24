@@ -150,6 +150,25 @@ serve(async (req) => {
       userId,
       idempotencyKey: `user_registered:${role}:${userId}`,
     });
+    const emailResult = result as {
+      sent?: boolean;
+      skipped?: boolean;
+      reason?: string;
+    };
+
+    if (emailResult.sent === false) {
+      return new Response(JSON.stringify({ success: false, result }), {
+        status: 502,
+        headers: corsHeaders,
+      });
+    }
+
+    if (emailResult.skipped && emailResult.reason !== "already_sent") {
+      return new Response(JSON.stringify({ success: false, result }), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
 
     return new Response(JSON.stringify({ success: true, result }), {
       status: 200,

@@ -5,6 +5,8 @@ import { supabase } from "../supabaseClient";
 
 export const ShopContext = createContext();
 
+const pendingWelcomeEmailRequests = new Set();
+
 const ShopContextProvider = (props) => {
   const currency = "$";
   const delivery_fee = 10;
@@ -225,6 +227,76 @@ const ShopContextProvider = (props) => {
     }
   };
 
+  const getOAuthDisplayName = (user) =>
+    String(
+      user?.user_metadata?.name ||
+        user?.user_metadata?.full_name ||
+        user?.email?.split("@")[0] ||
+        ""
+    ).trim();
+
+  const isOAuthUser = (user) =>
+    Boolean(user?.app_metadata?.provider && user.app_metadata.provider !== "email");
+
+  const syncPublicUser = async (authUser) => {
+    if (!authUser?.id || !authUser?.email) return;
+
+    const { error } = await supabase.from("users").upsert(
+      {
+        id: authUser.id,
+        email: authUser.email,
+        cartData: {},
+      },
+      { onConflict: "id" }
+    );
+
+    if (error) {
+      console.warn("Public user sync failed:", error.message || error);
+    }
+  };
+
+  const sendOAuthWelcomeEmail = async (authUser) => {
+    if (!authUser?.id || !authUser?.email || !isOAuthUser(authUser)) return;
+
+    const welcomeEmailKey = `welcome_email_requested:buyer:${authUser.id}`;
+    if (localStorage.getItem(welcomeEmailKey)) return;
+    if (pendingWelcomeEmailRequests.has(welcomeEmailKey)) return;
+    pendingWelcomeEmailRequests.add(welcomeEmailKey);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("sendWelcomeEmail", {
+        body: {
+          userId: authUser.id,
+          email: authUser.email,
+          name: getOAuthDisplayName(authUser),
+          role: "buyer",
+        },
+      });
+
+      if (error) {
+        console.warn("Welcome email failed:", error.message || error);
+        return;
+      }
+
+      if (data?.success === false) {
+        console.warn("Welcome email failed:", data.result?.error || data.error || data);
+        return;
+      }
+
+      localStorage.setItem(welcomeEmailKey, "1");
+    } catch (error) {
+      console.warn("Welcome email failed:", error);
+    } finally {
+      pendingWelcomeEmailRequests.delete(welcomeEmailKey);
+    }
+  };
+
+  const syncOAuthUserAfterAuth = async (authUser) => {
+    if (!isOAuthUser(authUser)) return;
+    await syncPublicUser(authUser);
+    await sendOAuthWelcomeEmail(authUser);
+  };
+
   useEffect(() => {
     getProductsData();
   }, []);
@@ -256,6 +328,7 @@ const ShopContextProvider = (props) => {
       localStorage.setItem("token", data.session.access_token);
       localStorage.setItem("user_id", u.id);
       getUserCart(u.id);
+      await syncOAuthUserAfterAuth(u);
     }
   };
 
@@ -270,6 +343,7 @@ const ShopContextProvider = (props) => {
       localStorage.setItem("token", session.access_token);
       localStorage.setItem("user_id", u.id);
       getUserCart(u.id);
+      syncOAuthUserAfterAuth(u);
     } else {
       setUser(null);
       setUserId("");

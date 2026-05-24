@@ -18,34 +18,55 @@ const Login = ({ setToken }) => {
       ? "http://localhost:5174"
       : "https://admin.reshareloop.com");
 
-  const sendWelcomeEmail = async (userId) => {
+  const getOAuthDisplayName = (user) =>
+    String(
+      user?.user_metadata?.name ||
+        user?.user_metadata?.full_name ||
+        user?.email?.split("@")[0] ||
+        ""
+    ).trim();
+
+  const isOAuthUser = (user) =>
+    Boolean(user?.app_metadata?.provider && user.app_metadata.provider !== "email");
+
+  const sendWelcomeEmail = async (userId, userEmail = email, userName = name) => {
     if (!userId) return;
+    const welcomeEmailKey = `welcome_email_requested:seller:${userId}`;
+    if (localStorage.getItem(welcomeEmailKey)) return;
 
     try {
-      const { error } = await supabase.functions.invoke("sendWelcomeEmail", {
+      const { data, error } = await supabase.functions.invoke("sendWelcomeEmail", {
         body: {
           userId,
-          email,
-          name,
+          email: userEmail,
+          name: userName,
           role: "seller",
         },
       });
 
       if (error) {
         console.warn("Welcome email failed:", error.message || error);
+        return;
       }
+
+      if (data?.success === false) {
+        console.warn("Welcome email failed:", data.result?.error || data.error || data);
+        return;
+      }
+
+      localStorage.setItem(welcomeEmailKey, "1");
     } catch (error) {
       console.warn("Welcome email failed:", error);
     }
   };
 
-  const syncPublicUser = async (userId) => {
-    if (!userId || !email) return;
+  const syncPublicUser = async (userId, userEmail = email) => {
+    if (!userId || !userEmail) return;
 
     const { error } = await supabase.from("users").upsert(
       {
         id: userId,
-        email,
+        email: userEmail,
         cartData: {},
       },
       { onConflict: "id" }
@@ -194,7 +215,10 @@ const Login = ({ setToken }) => {
 
       if (session) {
         const token = session.access_token;
-        const sellerId = session.user?.id;
+        const user = session.user;
+        const sellerId = user?.id;
+        const userEmail = user?.email || "";
+        const userName = getOAuthDisplayName(user);
 
         if (token) {
           setToken(token);
@@ -203,6 +227,10 @@ const Login = ({ setToken }) => {
 
         if (sellerId) {
           localStorage.setItem("user_id", sellerId);
+          if (isOAuthUser(user)) {
+            await syncPublicUser(sellerId, userEmail);
+            await sendWelcomeEmail(sellerId, userEmail, userName);
+          }
           // ✅ Auto redirect if already logged in
           navigate(`/admin/${sellerId}/add-sell`);
         }

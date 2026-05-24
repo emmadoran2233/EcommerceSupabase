@@ -17,34 +17,56 @@ const Login = () => {
       ? "http://localhost:5173"
       : "https://www.reshareloop.com");
 
-  const sendWelcomeEmail = async (userId) => {
+  //Login through Google Email
+  const getOAuthDisplayName = (user) =>
+    String(
+      user?.user_metadata?.name ||
+        user?.user_metadata?.full_name ||
+        user?.email?.split("@")[0] ||
+        ""
+    ).trim();
+
+  const isOAuthUser = (user) =>
+    Boolean(user?.app_metadata?.provider && user.app_metadata.provider !== "email");
+
+  const sendWelcomeEmail = async (userId, userEmail = email, userName = name) => {
     if (!userId) return;
+    const welcomeEmailKey = `welcome_email_requested:buyer:${userId}`;
+    if (localStorage.getItem(welcomeEmailKey)) return;
 
     try {
-      const { error } = await supabase.functions.invoke("sendWelcomeEmail", {
+      const { data, error } = await supabase.functions.invoke("sendWelcomeEmail", {
         body: {
           userId,
-          email,
-          name,
+          email: userEmail,
+          name: userName,
           role: "buyer",
         },
       });
 
       if (error) {
         console.warn("Welcome email failed:", error.message || error);
+        return;
       }
+
+      if (data?.success === false) {
+        console.warn("Welcome email failed:", data.result?.error || data.error || data);
+        return;
+      }
+
+      localStorage.setItem(welcomeEmailKey, "1");
     } catch (error) {
       console.warn("Welcome email failed:", error);
     }
   };
 
-  const syncPublicUser = async (userId) => {
-    if (!userId || !email) return;
+  const syncPublicUser = async (userId, userEmail = email) => {
+    if (!userId || !userEmail) return;
 
     const { error } = await supabase.from("users").upsert(
       {
         id: userId,
-        email,
+        email: userEmail,
         cartData: {},
       },
       { onConflict: "id" }
@@ -196,7 +218,10 @@ const Login = () => {
       } = await supabase.auth.getSession();
       if (session) {
         const sessionToken = session.access_token;
-        const userId = session.user?.id;
+        const user = session.user;
+        const userId = user?.id;
+        const userEmail = user?.email || "";
+        const userName = getOAuthDisplayName(user);
         console.log('session found:', session);
         if (sessionToken) {
           setToken(sessionToken);
@@ -204,7 +229,13 @@ const Login = () => {
         }
         if (userId) {
           localStorage.setItem("user_id", userId);
+          setUserId(userId);
+          if (isOAuthUser(user)) {
+            await syncPublicUser(userId, userEmail);
+            await sendWelcomeEmail(userId, userEmail, userName);
+          }
         }
+        setUser(user);
         navigate("/");
       }
     };

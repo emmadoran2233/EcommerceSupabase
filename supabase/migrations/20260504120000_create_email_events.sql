@@ -1,6 +1,6 @@
 create table if not exists public.email_events (
   id uuid primary key default gen_random_uuid(),
-  order_id bigint references public.orders(id) on delete cascade,
+  order_id bigint,
   user_id uuid references auth.users(id) on delete set null,
   event_type text not null,
   recipient_email text not null,
@@ -23,3 +23,17 @@ create index if not exists idx_email_events_user_id
 
 create index if not exists idx_email_events_status
   on public.email_events (status);
+
+do $$
+begin
+  if to_regclass('public.orders') is not null then
+    alter table public.email_events
+      add constraint email_events_order_id_fkey
+      foreign key (order_id) references public.orders(id) on delete cascade;
+  else
+    raise notice 'Skipping email_events.order_id foreign key because public.orders does not exist.';
+  end if;
+exception
+  when duplicate_object then
+    null;
+end $$;
