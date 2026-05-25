@@ -33,13 +33,33 @@ const Orders = ({ token, user }) => {
 
   // ---------------- Update Order Status ----------------
   const statusHandler = async (event, orderId) => {
+    const status = event.target.value;
+
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ status: event.target.value })
+        .update({ status })
         .eq('id', orderId);
 
       if (error) throw error;
+
+      const eventType =
+        status === "Cancelled" ? "order_cancelled" : "order_status_updated";
+
+      const { data: emailData, error: emailError } =
+        await supabase.functions.invoke("sendOrderEmails", {
+          body: {
+            orderId,
+            eventType,
+            status,
+          },
+        });
+
+      if (emailError) {
+        console.warn("Order status email failed:", emailError.message || emailError);
+      } else if (emailData?.success === false) {
+        console.warn("Order status email failed:", emailData.results || emailData.error);
+      }
 
       toast.success('Order status updated!');
       await fetchAllOrders();
@@ -125,6 +145,7 @@ const Orders = ({ token, user }) => {
               <option value="Shipped">Shipped</option>
               <option value="Out for delivery">Out for delivery</option>
               <option value="Delivered">Delivered</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
           </div>
         ))}

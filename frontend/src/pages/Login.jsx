@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { ShopContext } from "../context/ShopContext";
 import { supabase } from "../supabaseClient";
 import { toast } from "react-toastify";
@@ -8,13 +8,75 @@ const Login = () => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
-  const [showResetPassword, setShowResetPassword] = useState(false);
+  //check: do we have reset password menu
+  // const [showResetPassword, setShowResetPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const redirectUrl =
-  (typeof window !== "undefined" && window.location?.origin?.trim()) ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:5173"
-    : "https://www.reshareloop.com");
+    (typeof window !== "undefined" && window.location?.origin?.trim()) ||
+    (import.meta.env.DEV
+      ? "http://localhost:5173"
+      : "https://www.reshareloop.com");
+
+  //Login through Google Email
+  const getOAuthDisplayName = (user) =>
+    String(
+      user?.user_metadata?.name ||
+        user?.user_metadata?.full_name ||
+        user?.email?.split("@")[0] ||
+        ""
+    ).trim();
+
+  const isOAuthUser = (user) =>
+    Boolean(user?.app_metadata?.provider && user.app_metadata.provider !== "email");
+
+  const sendWelcomeEmail = async (userId, userEmail = email, userName = name) => {
+    if (!userId) return;
+    const welcomeEmailKey = `welcome_email_requested:buyer:${userId}`;
+    if (localStorage.getItem(welcomeEmailKey)) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("sendWelcomeEmail", {
+        body: {
+          userId,
+          email: userEmail,
+          name: userName,
+          role: "buyer",
+        },
+      });
+
+      if (error) {
+        console.warn("Welcome email failed:", error.message || error);
+        return;
+      }
+
+      if (data?.success === false) {
+        console.warn("Welcome email failed:", data.result?.error || data.error || data);
+        return;
+      }
+
+      localStorage.setItem(welcomeEmailKey, "1");
+    } catch (error) {
+      console.warn("Welcome email failed:", error);
+    }
+  };
+
+  const syncPublicUser = async (userId, userEmail = email) => {
+    if (!userId || !userEmail) return;
+
+    const { error } = await supabase.from("users").upsert(
+      {
+        id: userId,
+        email: userEmail,
+        cartData: {},
+      },
+      { onConflict: "id" }
+    );
+
+    if (error) {
+      console.warn("Public user sync failed:", error.message || error);
+    }
+  };
+
   const onSubmitHandler = async (event) => {
     event.preventDefault();
     try {
@@ -38,6 +100,8 @@ const Login = () => {
         if (userId) {
           localStorage.setItem("user_id", userId);
           setUserId(userId);
+          await syncPublicUser(userId);
+          await sendWelcomeEmail(userId);
           console.log("user_id saved:", userId);
         } else {
           console.warn("user_id missing in signUp:", data);
@@ -101,7 +165,7 @@ const Login = () => {
     if (token) {
       navigate("/");
     }
-  }, [token]);
+  }, [token, navigate]);
 
   // Password Reset Function
   const handlePasswordReset = async (e) => {
@@ -117,7 +181,7 @@ const Login = () => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${redirectUrl}/reset-password`,
       });
-      
+
       if (error) {
         console.error("Reset password error:", error);
         toast.error(error.message);
@@ -154,7 +218,10 @@ const Login = () => {
       } = await supabase.auth.getSession();
       if (session) {
         const sessionToken = session.access_token;
-        const userId = session.user?.id;
+        const user = session.user;
+        const userId = user?.id;
+        const userEmail = user?.email || "";
+        const userName = getOAuthDisplayName(user);
         console.log('session found:', session);
         if (sessionToken) {
           setToken(sessionToken);
@@ -162,12 +229,18 @@ const Login = () => {
         }
         if (userId) {
           localStorage.setItem("user_id", userId);
+          setUserId(userId);
+          if (isOAuthUser(user)) {
+            await syncPublicUser(userId, userEmail);
+            await sendWelcomeEmail(userId, userEmail, userName);
+          }
         }
+        setUser(user);
         navigate("/");
       }
     };
     fetchSession();
-  }, []);
+  }, [navigate, setToken]);
 
   return (
     <form
@@ -228,7 +301,7 @@ const Login = () => {
       </div>
 
       <div className="w-full flex justify-between text-sm mt-[-8px]">
-        <button 
+        <button
           type="button"
           onClick={handlePasswordReset}
           className="cursor-pointer hover:underline text-gray-600 bg-transparent border-none p-0 text-sm"

@@ -20,6 +20,8 @@ import { toast } from "react-toastify";
 export const backendUrl = import.meta.env.VITE_BACKEND_URL;
 export const currency = "$";
 
+const pendingWelcomeEmailRequests = new Set();
+
 /* ------------------------------
    Sub-Routes for Seller Dashboard
 ---------------------------------*/
@@ -64,6 +66,76 @@ const App = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
+  const getOAuthDisplayName = (authUser) =>
+    String(
+      authUser?.user_metadata?.name ||
+        authUser?.user_metadata?.full_name ||
+        authUser?.email?.split("@")[0] ||
+        "Seller"
+    ).trim();
+
+  const isOAuthUser = (authUser) =>
+    Boolean(authUser?.app_metadata?.provider && authUser.app_metadata.provider !== "email");
+
+  const syncPublicUser = async (authUser) => {
+    if (!authUser?.id || !authUser?.email) return;
+
+    const { error } = await supabase.from("users").upsert(
+      {
+        id: authUser.id,
+        email: authUser.email,
+        cartData: {},
+      },
+      { onConflict: "id" }
+    );
+
+    if (error) {
+      console.warn("Public user sync failed:", error.message || error);
+    }
+  };
+
+  const sendOAuthWelcomeEmail = async (authUser) => {
+    if (!authUser?.id || !authUser?.email || !isOAuthUser(authUser)) return;
+
+    const welcomeEmailKey = `welcome_email_requested:seller:${authUser.id}`;
+    if (localStorage.getItem(welcomeEmailKey)) return;
+    if (pendingWelcomeEmailRequests.has(welcomeEmailKey)) return;
+    pendingWelcomeEmailRequests.add(welcomeEmailKey);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("sendWelcomeEmail", {
+        body: {
+          userId: authUser.id,
+          email: authUser.email,
+          name: getOAuthDisplayName(authUser),
+          role: "seller",
+        },
+      });
+
+      if (error) {
+        console.warn("Welcome email failed:", error.message || error);
+        return;
+      }
+
+      if (data?.success === false) {
+        console.warn("Welcome email failed:", data.result?.error || data.error || data);
+        return;
+      }
+
+      localStorage.setItem(welcomeEmailKey, "1");
+    } catch (error) {
+      console.warn("Welcome email failed:", error);
+    } finally {
+      pendingWelcomeEmailRequests.delete(welcomeEmailKey);
+    }
+  };
+
+  const syncOAuthUserAfterAuth = async (authUser) => {
+    if (!isOAuthUser(authUser)) return;
+    await syncPublicUser(authUser);
+    await sendOAuthWelcomeEmail(authUser);
+  };
+
   // ✅ Persist token to localStorage
   useEffect(() => {
     if (token) localStorage.setItem("token", token);
@@ -82,14 +154,15 @@ const App = () => {
       if (data.session?.user) {
         const u = data.session.user;
         setUser({
-          id: u.id,
-          email: u.email,
-          name: u.user_metadata?.name || "Seller",
-        });
-        setToken(data.session.access_token);
-      } else {
-        setUser(null);
-        setToken("");
+            id: u.id,
+            email: u.email,
+            name: u.user_metadata?.name || "Seller",
+          });
+          setToken(data.session.access_token);
+          await syncOAuthUserAfterAuth(u);
+        } else {
+          setUser(null);
+          setToken("");
       }
     };
 
@@ -108,6 +181,7 @@ const App = () => {
             name: u.user_metadata?.name || "Seller",
           });
           setToken(session.access_token);
+          syncOAuthUserAfterAuth(u);
 
           // ✅ Redirect only when the user signs in (not refresh)
           if (event === "SIGNED_IN") {
