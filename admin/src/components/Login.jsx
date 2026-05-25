@@ -14,9 +14,68 @@ const Login = ({ setToken }) => {
   const redirectUrl =
     (typeof window !== "undefined" &&
       String(window.location?.origin || "").trim()) ||
-    (process.env.NODE_ENV === "development"
+    (import.meta.env.DEV
       ? "http://localhost:5174"
       : "https://admin.reshareloop.com");
+
+  const getOAuthDisplayName = (user) =>
+    String(
+      user?.user_metadata?.name ||
+        user?.user_metadata?.full_name ||
+        user?.email?.split("@")[0] ||
+        ""
+    ).trim();
+
+  const isOAuthUser = (user) =>
+    Boolean(user?.app_metadata?.provider && user.app_metadata.provider !== "email");
+
+  const sendWelcomeEmail = async (userId, userEmail = email, userName = name) => {
+    if (!userId) return;
+    const welcomeEmailKey = `welcome_email_requested:seller:${userId}`;
+    if (localStorage.getItem(welcomeEmailKey)) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("sendWelcomeEmail", {
+        body: {
+          userId,
+          email: userEmail,
+          name: userName,
+          role: "seller",
+        },
+      });
+
+      if (error) {
+        console.warn("Welcome email failed:", error.message || error);
+        return;
+      }
+
+      if (data?.success === false) {
+        console.warn("Welcome email failed:", data.result?.error || data.error || data);
+        return;
+      }
+
+      localStorage.setItem(welcomeEmailKey, "1");
+    } catch (error) {
+      console.warn("Welcome email failed:", error);
+    }
+  };
+
+  const syncPublicUser = async (userId, userEmail = email) => {
+    if (!userId || !userEmail) return;
+
+    const { error } = await supabase.from("users").upsert(
+      {
+        id: userId,
+        email: userEmail,
+        cartData: {},
+      },
+      { onConflict: "id" }
+    );
+
+    if (error) {
+      console.warn("Public user sync failed:", error.message || error);
+    }
+  };
 
   // -------------------- EMAIL LOGIN --------------------
   const onSubmitHandler = async (e) => {
@@ -27,9 +86,9 @@ const Login = ({ setToken }) => {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { 
+          options: {
             data: { name },
-            emailRedirectTo: `${redirectUrl}/auth/callback`
+            emailRedirectTo: `${redirectUrl}/auth/callback`,
           },
         });
 
@@ -40,22 +99,24 @@ const Login = ({ setToken }) => {
           toast.error(error.message);
           return;
         }
-        
+
         const userId = data?.user?.id || data?.session?.user?.id || null;
         const accessToken = data?.session?.access_token || "";
-        
+
         console.log("User ID:", userId);
         console.log("Access Token:", accessToken);
-        
+
         if (!userId) {
           toast.info("Please check your email to confirm your account before logging in.");
           return;
         }
-        
+
         if (userId) {
           localStorage.setItem("user_id", userId);
+          await syncPublicUser(userId);
+          await sendWelcomeEmail(userId);
         }
-        
+
         if (accessToken) {
           // Auto-confirmed (email confirmation disabled)
           setToken(accessToken);
@@ -84,16 +145,18 @@ const Login = ({ setToken }) => {
           toast.error(error.message);
           return;
         }
-      if (data?.session) {
-        const session = data.session;
-        const sellerId = session.user?.id;
-        setToken(session.access_token);
-        localStorage.setItem("token", session.access_token);
-        localStorage.setItem("user_id", sellerId);
-        toast.success("Login successful!");
-        navigate(`/admin/${sellerId}/add-sell`);
+
+        if (data?.session) {
+          const session = data.session;
+          const sellerId = session.user?.id;
+          setToken(session.access_token);
+          localStorage.setItem("token", session.access_token);
+          localStorage.setItem("user_id", sellerId);
+          toast.success("Login successful!");
+          navigate(`/admin/${sellerId}/add-sell`);
+        }
       }
-    }} catch (error) {
+    } catch (error) {
       console.error(error);
       toast.error(error?.message || "An error occurred");
     }
@@ -152,7 +215,10 @@ const Login = ({ setToken }) => {
 
       if (session) {
         const token = session.access_token;
-        const sellerId = session.user?.id;
+        const user = session.user;
+        const sellerId = user?.id;
+        const userEmail = user?.email || "";
+        const userName = getOAuthDisplayName(user);
 
         if (token) {
           setToken(token);
@@ -161,6 +227,10 @@ const Login = ({ setToken }) => {
 
         if (sellerId) {
           localStorage.setItem("user_id", sellerId);
+          if (isOAuthUser(user)) {
+            await syncPublicUser(sellerId, userEmail);
+            await sendWelcomeEmail(sellerId, userEmail, userName);
+          }
           // ✅ Auto redirect if already logged in
           navigate(`/admin/${sellerId}/add-sell`);
         }
