@@ -46,6 +46,30 @@ serve(async (req) => {
       status,
     });
 
+    const failedResult = Array.isArray(results)
+      ? results.find((result) => {
+          const item = result as {
+            sent?: boolean;
+            skipped?: boolean;
+            reason?: string;
+          };
+          return (
+            item.sent === false ||
+            (item.skipped && item.reason !== "already_sent")
+          );
+        })
+      : null;
+
+    if (failedResult) {
+      return new Response(
+        JSON.stringify({ success: false, failedResult, results }),
+        {
+          status: 200,
+          headers: corsHeaders,
+        }
+      );
+    }
+
     return new Response(JSON.stringify({ success: true, results }), {
       status: 200,
       headers: corsHeaders,
