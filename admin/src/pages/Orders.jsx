@@ -6,6 +6,9 @@ import { supabase } from '../supabaseClient.js'   // by supabase-js
 
 const Orders = ({ token, user }) => {
   const [orders, setOrders] = useState([])
+  const [shippingDrafts, setShippingDrafts] = useState({})
+
+  const getOrderDisplayId = (order) => order.order_id || order.id;
 
   // ---------------- Fetch Orders ----------------
   const fetchAllOrders = async () => {
@@ -25,6 +28,15 @@ const Orders = ({ token, user }) => {
       );
 
       setOrders(sellerOrders);
+      setShippingDrafts(
+        sellerOrders.reduce((drafts, order) => {
+          drafts[order.id] = {
+            trackingNumber: order.shipping_tracking_number || "",
+            trackingUrl: order.shipping_tracking_url || "",
+          };
+          return drafts;
+        }, {})
+      );
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error(error.message);
@@ -32,13 +44,34 @@ const Orders = ({ token, user }) => {
   };
 
   // ---------------- Update Order Status ----------------
-  const statusHandler = async (event, orderId) => {
+  const statusHandler = async (event, order) => {
     const status = event.target.value;
+    const orderId = order.id;
+
+    if (status === "Cancelled") {
+      const confirmed = window.confirm(
+        `Cancel order #${getOrderDisplayId(order)}? This will notify the customer.`
+      );
+
+      if (!confirmed) {
+        event.target.value = order.status;
+        return;
+      }
+    }
+
+    const shippingDraft = shippingDrafts[orderId] || {};
+    const updatePayload = {
+      status,
+      shipping_tracking_number:
+        shippingDraft.trackingNumber?.trim() || null,
+      shipping_tracking_url:
+        shippingDraft.trackingUrl?.trim() || null,
+    };
 
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ status })
+        .update(updatePayload)
         .eq('id', orderId);
 
       if (error) throw error;
@@ -88,7 +121,7 @@ const Orders = ({ token, user }) => {
 
             <div>
               <p className="text-sm font-semibold text-gray-700 mb-2">
-                🧾 Order ID: {order.order_id || "N/A"}
+                🧾 Order ID: {getOrderDisplayId(order)}
               </p>
               <div>
                 {/* ✅ Only show this seller’s items */}
@@ -136,19 +169,53 @@ const Orders = ({ token, user }) => {
                 .toFixed(2)}
             </p>
 
-            {/* ✅ Status control */}
-            <select
-              onChange={event => statusHandler(event, order.id)}
-              value={order.status}
-              className="p-2 font-semibold"
-            >
-              <option value="Order Placed">Order Placed</option>
-              <option value="Packing">Packing</option>
-              <option value="Shipped">Shipped</option>
-              <option value="Out for delivery">Out for delivery</option>
-              <option value="Delivered">Delivered</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
+            <div className="flex flex-col gap-2">
+              {/* ✅ Status control */}
+              <select
+                onChange={event => statusHandler(event, order)}
+                value={order.status}
+                className="p-2 font-semibold"
+              >
+                <option value="Order Placed">Order Placed</option>
+                <option value="Packing">Packing</option>
+                <option value="Shipped">Shipped</option>
+                <option value="Out for delivery">Out for delivery</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+
+              <input
+                type="text"
+                value={shippingDrafts[order.id]?.trackingNumber || ""}
+                onChange={(event) =>
+                  setShippingDrafts((prev) => ({
+                    ...prev,
+                    [order.id]: {
+                      ...(prev[order.id] || {}),
+                      trackingNumber: event.target.value,
+                    },
+                  }))
+                }
+                className="border p-2"
+                placeholder="Tracking number"
+              />
+
+              <input
+                type="url"
+                value={shippingDrafts[order.id]?.trackingUrl || ""}
+                onChange={(event) =>
+                  setShippingDrafts((prev) => ({
+                    ...prev,
+                    [order.id]: {
+                      ...(prev[order.id] || {}),
+                      trackingUrl: event.target.value,
+                    },
+                  }))
+                }
+                className="border p-2"
+                placeholder="Shipping link"
+              />
+            </div>
           </div>
         ))}
 

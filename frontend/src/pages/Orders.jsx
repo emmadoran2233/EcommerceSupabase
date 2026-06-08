@@ -15,11 +15,24 @@ const Orders = () => {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const baseSelect = "id, items, status, payment, paymentmethod, date, buyer_id";
+      const ownerFilter = `buyer_id.eq.${user.id},user_id.eq.${user.id}`;
+      let { data, error } = await supabase
         .from("orders")
-        .select("id, items, status, payment, paymentmethod, date, buyer_id")
-        .eq("buyer_id", user.id)
+        .select(`${baseSelect}, shipping_tracking_number, shipping_tracking_url`)
+        .or(ownerFilter)
         .order("created_at", { ascending: false });
+
+      if (error && error.message?.includes("shipping_tracking")) {
+        const fallback = await supabase
+          .from("orders")
+          .select(baseSelect)
+          .or(ownerFilter)
+          .order("created_at", { ascending: false });
+
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       if (error) {
         console.error("❌ Supabase fetch error:", error);
@@ -33,6 +46,8 @@ const Orders = () => {
         paymentmethod: order.paymentmethod,
         date: order.date,
         items: order.items || [],
+        shippingTrackingNumber: order.shipping_tracking_number || "",
+        shippingTrackingUrl: order.shipping_tracking_url || "",
       }));
 
       setOrderData(formattedOrders);
@@ -161,6 +176,29 @@ const Orders = () => {
                 Reorder
               </button>
             </div>
+
+            {(order.shippingTrackingNumber || order.shippingTrackingUrl) && (
+              <div className="mt-3 text-sm text-gray-600">
+                {order.shippingTrackingNumber && (
+                  <p>
+                    Tracking #:{" "}
+                    <span className="font-medium text-black">
+                      {order.shippingTrackingNumber}
+                    </span>
+                  </p>
+                )}
+                {order.shippingTrackingUrl && (
+                  <a
+                    href={order.shippingTrackingUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    Track shipment
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
