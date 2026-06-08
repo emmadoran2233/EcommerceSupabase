@@ -193,14 +193,13 @@ const PlaceOrder = () => {
           const orderId = insertedOrder?.id;
           await sendOrderNotificationEmails(orderId);
 
+          // pass user token to know who's access to the order
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verifyStripe`,
             {
               method: "POST",
               headers: {
-                Authorization: `Bearer ${
-                  import.meta.env.VITE_SUPABASE_ANON_KEY
-                }`,
+                Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({ orderId, amount: orderData.amount }),
@@ -238,9 +237,7 @@ const PlaceOrder = () => {
             {
               method: "POST",
               headers: {
-                Authorization: `Bearer ${
-                  import.meta.env.VITE_SUPABASE_ANON_KEY
-                }`,
+                Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({ orderId, amount: orderData.amount }),
