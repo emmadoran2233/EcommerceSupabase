@@ -17,9 +17,28 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const userSupabase = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      {
+        global: {
+          headers: {
+            Authorization: req.headers.get("Authorization") || "",
+          },
+        },
+      }
+    );
+
+    const { data: authData, error: authError } = await userSupabase.auth.getUser();
+    if (authError || !authData.user) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Unauthorized" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
 
     const body = await req.json();
-    const user_id = body.user_id;
+    const user_id = authData.user.id;
     const order_id = Number(body.order_id);
 
     if (!user_id || !order_id) {
@@ -36,6 +55,7 @@ serve(async (req) => {
       .from("orders")
       .select("items")
       .eq("id", order_id)
+      .or(`buyer_id.eq.${user_id},user_id.eq.${user_id}`)
       .single();
 
     if (orderError || !order) {

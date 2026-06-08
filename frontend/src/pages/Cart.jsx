@@ -125,9 +125,11 @@ const Cart = () => {
                           <div className="flex items-center gap-5">
                             <div>
                               <p>{currency + productData.price}</p>
-                              <p className="px-2 sm:px-3 sm:py-1 border bg-slate-50 inline-block mt-1">
-                                {item.displaySize}
-                              </p>
+                              {item.displaySize !== "One Size" && (
+                                <p className="px-2 sm:px-3 sm:py-1 border bg-slate-50 inline-block mt-1">
+                                  {item.displaySize}
+                                </p>
+                              )}
                             </div>
                             <div className="flex items-center gap-3 mt-2">
                               <input

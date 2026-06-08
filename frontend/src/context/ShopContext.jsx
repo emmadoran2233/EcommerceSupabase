@@ -53,14 +53,17 @@ const ShopContextProvider = (props) => {
       return;
     }
 
-    // ✅ 非租赁商品必须选 size
-    if (!product.rentable && (!size || size === "")) {
+    const productSizes = Array.isArray(product.sizes) ? product.sizes : [];
+    const requiresSize = !product.rentable && productSizes.length > 0;
+
+    // ✅ Only products with configured size options require size selection.
+    if (requiresSize && (!size || size === "")) {
       toast.error("Select Product Size");
       return;
     }
 
     // ✅ 对租赁商品固定用 key 'rent'
-    let baseSizeKey = product.rentable ? "rent" : size;
+    let baseSizeKey = product.rentable ? "rent" : size || "One Size";
     let sizeKey;
     if (product.rentable && rentInfo?.startDate && rentInfo?.endDate) {
       const start = new Date(rentInfo.startDate).toISOString().split("T")[0];

@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import axios from "axios";
 
 const Verify = () => {
-const { navigate, setCartItems } = useContext(ShopContext);
+  const { navigate, setCartItems, token } = useContext(ShopContext);
   const [searchParams] = useSearchParams();
 
   const success = searchParams.get('success');
@@ -13,6 +13,8 @@ const { navigate, setCartItems } = useContext(ShopContext);
   const [loading, setLoading] = useState(true);
 
   const checkOrderStatus = async () => {
+    if (!token) return;
+
     try {
       // Log environment for debugging
       console.log('Environment:', import.meta.env.MODE);
@@ -38,7 +40,7 @@ const { navigate, setCartItems } = useContext(ShopContext);
         { orderId },
         {
           headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         }
@@ -66,7 +68,7 @@ const { navigate, setCartItems } = useContext(ShopContext);
 
   useEffect(() => {
     checkOrderStatus();
-  }, [orderId]);
+  }, [orderId, token]);
 
   return (
     <div className="flex flex-col justify-center items-center min-h-[80vh]">
