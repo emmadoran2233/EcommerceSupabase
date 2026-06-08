@@ -46,7 +46,7 @@ const SellerRoutes = ({ token, user }) => {
           <Route path="list" element={<List user={user} />} />
           <Route path="add-lend" element={<Lend user={user} />} />
           <Route path="lend-list" element={<LendList user={user} />} />
-          <Route path="orders" element={<Orders token={token} />} />
+          <Route path="orders" element={<Orders token={token} user={user} />} />
           <Route path="inventory" element={<Inventory token={token} user={user} />} />
           <Route path="banner" element={<BannerControl token={token} user={user} />} />
           <Route path="edit-store" element={<EditStore user={user} />} />

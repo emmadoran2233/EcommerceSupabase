@@ -133,6 +133,26 @@ serve(async (req) => {
       }
     );
   }
+  
+// Verify the authenticated user and ensure the order belongs to them before returning payment status.
+  const userSupabase = createClient(
+    supabaseUrl,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    {
+      global: {
+        headers: {
+          Authorization: req.headers.get("Authorization") || "",
+        },
+      },
+    }
+  );
+  const { data: authData, error: authError } = await userSupabase.auth.getUser();
+  if (authError || !authData.user) {
+    return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  }
 
   const { data: order, error } = await supabase
     .from("orders")
@@ -140,6 +160,7 @@ serve(async (req) => {
       "id, items, amount, shipping_fee, rent_breakdown, rent_subtotal, purchase_subtotal, deposit_total, deposit_currency, charge_currency, deposit_hold_status, payment, paymentmethod, address, stripe_session_id"
     )
     .eq("id", Number(orderId))
+    .or(`buyer_id.eq.${authData.user.id},user_id.eq.${authData.user.id}`)
     .single();
 
   if (error || !order) {

@@ -61,6 +61,42 @@ serve(async (req) => {
     );
   }
 
+  //Verify the authenticated user and ensure the order belongs to them before returning payment status.
+  const userSupabase = createClient(
+    supabaseUrl,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    {
+      global: {
+        headers: {
+          Authorization: req.headers.get("Authorization") || "",
+        },
+      },
+    }
+  );
+  const { data: authData, error: authError } = await userSupabase.auth.getUser();
+  if (authError || !authData.user) {
+    return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .select("id, amount")
+    .eq("id", Number(orderId))
+    .or(`buyer_id.eq.${authData.user.id},user_id.eq.${authData.user.id}`)
+    .single();
+
+  if (orderError || !order) {
+    return new Response(JSON.stringify({ success: false, error: "Order not found" }), {
+      status: 404,
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
+  const payableAmount = Number(order.amount || amount);
+
   try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -69,7 +105,7 @@ serve(async (req) => {
           price_data: {
             currency: "usd",
             product_data: { name: "ReShareLoop Google Pay" },
-            unit_amount: Math.round(amount * 100),
+            unit_amount: Math.round(payableAmount * 100),
           },
           quantity: 1,
         },
