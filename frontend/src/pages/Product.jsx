@@ -291,7 +291,7 @@ const Product = () => {
             </p>
 
             {/* ---------- Select Size ---------- */}
-            {!productData.rentable && (
+            {!productData.rentable && productData.sizes?.length > 0 && (
               <div className="flex flex-col gap-4 my-8">
                 <p>Select Size</p>
                 <div className="flex gap-2">

@@ -97,7 +97,9 @@ const Orders = ({ token, user }) => {
                   .map((item, i) => (
                     <p key={i} className="py-0.5">
                       {item.name} × {item.quantity}{" "}
-                      <span className="text-gray-500">{item.size}</span>
+                      {item.size && item.size !== "One Size" && (
+                        <span className="text-gray-500">{item.size}</span>
+                      )}
                     </p>
                   ))}
               </div>

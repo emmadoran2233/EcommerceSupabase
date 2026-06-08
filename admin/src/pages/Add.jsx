@@ -4,6 +4,18 @@ import { toast } from 'react-toastify'
 import { supabase } from '../supabaseClient'
 
 const Add = ({ token, user }) => {
+  const categoryOptions = {
+    Men: ["Topwear", "Bottomwear", "Winterwear"],
+    Women: ["Topwear", "Bottomwear", "Winterwear"],
+    Kids: ["Topwear", "Bottomwear", "Winterwear"],
+    Electronics: ["Phones", "Computers", "Cameras", "Gaming", "Accessories"],
+    Tools: ["Power Tools", "Hand Tools", "Cleaning", "Outdoor"],
+    Home: ["Furniture", "Kitchen", "Decor", "Appliances"],
+    Beauty: ["Skincare", "Fragrance", "Makeup", "Haircare"],
+    Other: ["General"],
+  }
+  const sizeOptions = ["S", "M", "L", "XL", "XXL"]
+
   const [image1, setImage1] = useState(false)
   const [image2, setImage2] = useState(false)
   const [image3, setImage3] = useState(false)
@@ -16,6 +28,7 @@ const Add = ({ token, user }) => {
   const [subCategory, setSubCategory] = useState("Topwear")
   const [bestseller, setBestseller] = useState(false)
   const [isCustomizable, setIsCustomizable] = useState(false)
+  const [hasSizes, setHasSizes] = useState(true)
   const [sizes, setSizes] = useState([])
   const [stock, setStock] = useState(0) // ✅ new stock state
 
@@ -78,6 +91,7 @@ const Add = ({ token, user }) => {
       setSubCategory("Topwear")
       setBestseller(false)
       setIsCustomizable(false)
+      setHasSizes(true)
       setSizes([])
       setStock(0)
       setImage1(false)
@@ -151,13 +165,23 @@ const Add = ({ token, user }) => {
         <div>
           <p className="mb-2 font-semibold">Product category</p>
           <select
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) => {
+              const nextCategory = e.target.value
+              setCategory(nextCategory)
+              setSubCategory(categoryOptions[nextCategory][0])
+              if (!["Men", "Women", "Kids"].includes(nextCategory)) {
+                setHasSizes(false)
+                setSizes([])
+              }
+            }}
             value={category}
             className="w-full px-3 py-2 border rounded"
           >
-            <option value="Men">Men</option>
-            <option value="Women">Women</option>
-            <option value="Kids">Kids</option>
+            {Object.keys(categoryOptions).map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -168,9 +192,11 @@ const Add = ({ token, user }) => {
             value={subCategory}
             className="w-full px-3 py-2 border rounded"
           >
-            <option value="Topwear">Topwear</option>
-            <option value="Bottomwear">Bottomwear</option>
-            <option value="Winterwear">Winterwear</option>
+            {categoryOptions[category].map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -203,29 +229,48 @@ const Add = ({ token, user }) => {
 
       {/* ---------------- Sizes ---------------- */}
       <div>
-        <p className="mb-2 font-semibold">Product Sizes</p>
-        <div className="flex gap-3">
-          {["S", "M", "L", "XL", "XXL"].map((size) => (
-            <div
-              key={size}
-              onClick={() =>
-                setSizes((prev) =>
-                  prev.includes(size)
-                    ? prev.filter((item) => item !== size)
-                    : [...prev, size]
-                )
-              }
-            >
-              <p
-                className={`${
-                  sizes.includes(size) ? "bg-pink-200" : "bg-gray-200"
-                } px-3 py-1 cursor-pointer rounded`}
-              >
-                {size}
-              </p>
+        <label className="flex gap-2 items-center cursor-pointer mb-2" htmlFor="has_sizes">
+          <input
+            onChange={() => {
+              setHasSizes((prev) => {
+                if (prev) setSizes([])
+                return !prev
+              })
+            }}
+            checked={hasSizes}
+            type="checkbox"
+            id="has_sizes"
+          />
+          <span className="font-semibold">This product has size options</span>
+        </label>
+
+        {hasSizes && (
+          <div>
+            <p className="mb-2 font-semibold">Product Sizes</p>
+            <div className="flex gap-3">
+              {sizeOptions.map((size) => (
+                <div
+                  key={size}
+                  onClick={() =>
+                    setSizes((prev) =>
+                      prev.includes(size)
+                        ? prev.filter((item) => item !== size)
+                        : [...prev, size]
+                    )
+                  }
+                >
+                  <p
+                    className={`${
+                      sizes.includes(size) ? "bg-pink-200" : "bg-gray-200"
+                    } px-3 py-1 cursor-pointer rounded`}
+                  >
+                    {size}
+                  </p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ---------------- Bestseller ---------------- */}

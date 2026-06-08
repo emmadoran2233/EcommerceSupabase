@@ -133,7 +133,8 @@ const Orders = () => {
                 <div>
                   <p className="font-medium">{item.name}</p>
                   <p className="text-gray-600">
-                    {order.paymentmethod} | Size: {item.size} | Qty:{" "}
+                    {order.paymentmethod}
+                    {item.size && item.size !== "One Size" ? ` | Size: ${item.size}` : ""} | Qty:{" "}
                     {item.quantity}
                   </p>
                   {item.customization && (
