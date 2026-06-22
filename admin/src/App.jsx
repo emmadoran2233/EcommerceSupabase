@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
-import { Routes, Route, useParams, useNavigate, Navigate } from "react-router-dom";
+import { Routes, Route, useParams, useNavigate, Navigate, useLocation } from "react-router-dom";
 import Add from "./pages/Add";
 import Lend from "./pages/Lend";
 import List from "./pages/List";
@@ -12,6 +12,7 @@ import BannerControl from "./pages/BannerControl";
 import Login from "./components/Login";
 import AuthCallback from "./pages/AuthCallback";
 import EditStore from "./pages/EditStore";
+import ResetPassword from "./pages/ResetPassword";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { supabase } from "./supabaseClient";
@@ -65,6 +66,8 @@ const App = () => {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isResetPasswordRoute = location.pathname === "/reset-password";
 
   const getOAuthDisplayName = (authUser) =>
     String(
@@ -184,7 +187,7 @@ const App = () => {
           syncOAuthUserAfterAuth(u);
 
           // ✅ Redirect only when the user signs in (not refresh)
-          if (event === "SIGNED_IN") {
+          if (event === "SIGNED_IN" && !isResetPasswordRoute) {
             navigate(`/admin/${u.id}/add-sell`);
           }
         } else {
@@ -196,7 +199,16 @@ const App = () => {
     );
 
     return () => listener.subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, isResetPasswordRoute]);
+
+  if (isResetPasswordRoute) {
+    return (
+      <div className="bg-gray-50 min-h-screen">
+        <ToastContainer />
+        <ResetPassword />
+      </div>
+    );
+  }
 
   // ✅ If not logged in → show login page
   if (!token) return <Login setToken={setToken} />;
@@ -212,6 +224,7 @@ const App = () => {
       <Routes>
         {/* Auth callback for email confirmation */}
         <Route path="/auth/callback" element={<AuthCallback setToken={setToken} />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         {/* All admin pages nested under /admin/:sellerId */}
         <Route path="/admin/:sellerId/*" element={<SellerRoutes token={token} user={user} />} />
         {/* Default redirect if visiting root */}
