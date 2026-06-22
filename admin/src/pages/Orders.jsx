@@ -27,7 +27,8 @@ const DEFAULT_PARCEL = {
   massUnit: "lb",
 };
 
-// Shippo needs a complete sender address before it can price a shipment.
+// Shippo needs complete sender contact and address details before it can
+// price a shipment and USPS requires email/phone before purchasing a label.
 // The seller can refine this per order without changing their store profile.
 const createDefaultAddress = (user) => ({
   name: "",
@@ -91,12 +92,23 @@ const normalizeRates = (rates = []) =>
 // Rate lookup is intentionally locked until the minimum shipment data is present.
 // This prevents avoidable Shippo API calls and avoids showing misleading rates.
 const validateShippoDraft = (draft) => {
-  const requiredAddressFields = ["name", "street1", "city", "state", "zip", "country"];
+  const requiredAddressFields = [
+    "name",
+    "email",
+    "phone",
+    "street1",
+    "city",
+    "state",
+    "zip",
+    "country",
+  ];
   const missingAddress = requiredAddressFields.find(
     (field) => !String(draft.fromAddress?.[field] || "").trim()
   );
 
-  if (missingAddress) return "Please complete the ship-from address.";
+  if (missingAddress) {
+    return "Please complete the ship-from contact and address details.";
+  }
 
   const requiredParcelFields = ["length", "width", "height", "weight"];
   const missingParcel = requiredParcelFields.find(
@@ -505,6 +517,39 @@ const Orders = ({ token, user }) => {
                         placeholder="Store or sender name"
                       />
 
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <TextInput
+                          label="Sender email"
+                          helper="Required by USPS before a label can be purchased."
+                          type="email"
+                          value={draft.fromAddress.email}
+                          onChange={(event) =>
+                            updateNestedShippingDraft(
+                              order.id,
+                              "fromAddress",
+                              "email",
+                              event.target.value
+                            )
+                          }
+                          placeholder="seller@example.com"
+                        />
+                        <TextInput
+                          label="Sender phone"
+                          helper="Required by USPS before a label can be purchased."
+                          type="tel"
+                          value={draft.fromAddress.phone}
+                          onChange={(event) =>
+                            updateNestedShippingDraft(
+                              order.id,
+                              "fromAddress",
+                              "phone",
+                              event.target.value
+                            )
+                          }
+                          placeholder="555-555-5555"
+                        />
+                      </div>
+
                       <TextInput
                         label="Street address"
                         type="text"
@@ -664,8 +709,8 @@ const Orders = ({ token, user }) => {
 
                     {!shippoReady && (
                       <p className={helperClass}>
-                        Complete the ship-from address and package information before
-                        viewing service options and shipping rate estimates.
+                        Complete the ship-from contact, address, and package information
+                        before viewing service options and shipping rate estimates.
                       </p>
                     )}
 
