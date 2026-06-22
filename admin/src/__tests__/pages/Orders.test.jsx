@@ -23,6 +23,9 @@ jest.mock('~/supabaseClient.js', () => ({
   __esModule: true,
   supabase: {
     from: jest.fn(), // configured per-test via supabase.from.mockReturnValueOnce
+    functions: {
+      invoke: jest.fn(),
+    },
   },
 }));
 
@@ -45,16 +48,20 @@ const makeUpdateStatusChain = (error = null) => {
 };
 
 describe('Orders', () => {
+  const sellerUser = { id: 'seller-1', email: 'seller@example.com' };
+  const renderOrders = () => render(<Orders token="token-1" user={sellerUser} />);
+
   beforeEach(() => {
     jest.clearAllMocks();
+    supabase.functions.invoke.mockResolvedValue({ data: { success: true }, error: null });
   });
 
   test('fetches orders on mount and renders order row', async () => {
     const order = {
       id: 1,
       items: [
-        { name: 'Shirt', quantity: 2, size: 'M' },
-        { name: 'Pants', quantity: 1, size: 'L' },
+        { name: 'Shirt', quantity: 2, size: 'M', seller_id: sellerUser.id, price: 50 },
+        { name: 'Pants', quantity: 1, size: 'L', seller_id: sellerUser.id, price: 49.99 },
       ],
       address: {
         firstName: 'Ada',
@@ -66,7 +73,7 @@ describe('Orders', () => {
         zipcode: 'W1A 1AA',
         phone: '555-1234',
       },
-      paymentMethod: 'Card',
+      paymentmethod: 'Card',
       payment: true,
       date: '2025-01-15T12:00:00.000Z',
       amount: 149.99,
@@ -77,7 +84,7 @@ describe('Orders', () => {
     const sel1 = makeSelectOrdersChain([order]);
     supabase.from.mockReturnValueOnce({ select: sel1.select });
 
-    render(<Orders />);
+    renderOrders();
 
     // header
     expect(await screen.findByRole('heading', { name: /orders/i })).toBeInTheDocument();
@@ -93,9 +100,9 @@ describe('Orders', () => {
     expect(screen.getByText('555-1234')).toBeInTheDocument();
 
     // right column
-    expect(screen.getByText(/Items : 2/)).toBeInTheDocument();
-    expect(screen.getByText(/Method : Card/)).toBeInTheDocument();
-    expect(screen.getByText(/Payment : Done/)).toBeInTheDocument();
+    expect(screen.getByText(/Items:\s*2/)).toBeInTheDocument();
+    expect(screen.getByText(/Method:\s*Card/)).toBeInTheDocument();
+    expect(screen.getByText(/Payment:\s*Done/)).toBeInTheDocument();
 
     // date uses toLocaleDateString -> compute expected in the same environment
     const expectedDate = new Date(order.date).toLocaleDateString();
@@ -107,10 +114,12 @@ describe('Orders', () => {
     // select has current value
     const selects = screen.getAllByRole('combobox');
     expect(selects[0]).toHaveValue('Order Placed');
+    expect(selects[1]).toHaveValue('manual');
+    expect(screen.getByRole('option', { name: 'Shippo API label' })).toBeInTheDocument();
 
     // image present (alt is empty string, so query by altText '')
-    const row = selects[0].closest('div'); // row wrapper
-    const img = within(row).getByAltText('');
+    const row = selects[0].closest('.grid'); // row wrapper
+    const img = within(row).getByAltText('parcel');
     expect(img).toHaveAttribute('src', 'mock-parcel.png');
 
     // called the right table
@@ -122,19 +131,19 @@ describe('Orders', () => {
     const sel1 = makeSelectOrdersChain(null, err);
     supabase.from.mockReturnValueOnce({ select: sel1.select });
 
-    render(<Orders />);
+    renderOrders();
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Failed to fetch orders: fetch boom');
+      expect(toast.error).toHaveBeenCalledWith('fetch boom');
     });
   });
 
   test('status update success → calls update, shows success toast, and re-fetches', async () => {
     const initialOrder = {
       id: 7,
-      items: [{ name: 'Hat', quantity: 1, size: 'One' }],
+      items: [{ name: 'Hat', quantity: 1, size: 'One', seller_id: sellerUser.id, price: 25 }],
       address: { firstName: 'Grace', lastName: 'Hopper', street: '7 Navy Way', city: 'Arlington', state: 'VA', country: 'USA', zipcode: '22202', phone: '555-7777' },
-      paymentMethod: 'PayPal',
+      paymentmethod: 'PayPal',
       payment: false,
       date: '2025-02-01T00:00:00.000Z',
       amount: 25.0,
@@ -156,10 +165,10 @@ describe('Orders', () => {
     const sel2 = makeSelectOrdersChain([refreshedOrder]);
     supabase.from.mockReturnValueOnce({ select: sel2.select });
 
-    render(<Orders />);
+    renderOrders();
 
     // open the select and change to "Packing"
-    const select = await screen.findByRole('combobox');
+    const select = (await screen.findAllByRole('combobox'))[0];
     expect(select).toHaveValue('Order Placed');
 
     // fire change
@@ -172,7 +181,7 @@ describe('Orders', () => {
 
     // after refresh, the select shows updated value
     await waitFor(() => {
-      expect(screen.getByRole('combobox')).toHaveValue('Packing');
+      expect(screen.getAllByRole('combobox')[0]).toHaveValue('Packing');
     });
 
     // verify the update chain received the right payload (status)
@@ -183,9 +192,9 @@ describe('Orders', () => {
   test('status update error → shows toast.error', async () => {
     const initialOrder = {
       id: 9,
-      items: [{ name: 'Socks', quantity: 3, size: 'L' }],
+      items: [{ name: 'Socks', quantity: 3, size: 'L', seller_id: sellerUser.id, price: 4 }],
       address: { firstName: 'Linus', lastName: 'Torvalds' },
-      paymentMethod: 'Card',
+      paymentmethod: 'Card',
       payment: false,
       date: '2025-03-10T00:00:00.000Z',
       amount: 12.5,
@@ -200,16 +209,16 @@ describe('Orders', () => {
     const updErr = makeUpdateStatusChain(new Error('update boom'));
     supabase.from.mockReturnValueOnce({ update: updErr.update });
 
-    render(<Orders />);
+    renderOrders();
 
-    const select = await screen.findByRole('combobox');
+    const select = (await screen.findAllByRole('combobox'))[0];
     fireEvent.change(select, { target: { value: 'Shipped' } });
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Failed to update order: update boom');
+      expect(toast.error).toHaveBeenCalledWith('update boom');
     });
 
     // value may remain as original since refresh didn't happen
-    expect(screen.getByRole('combobox')).toHaveValue('Order Placed');
+    expect(screen.getAllByRole('combobox')[0]).toHaveValue('Order Placed');
   });
 });
