@@ -211,7 +211,14 @@ const App = () => {
   }
 
   // ✅ If not logged in → show login page
-  if (!token) return <Login setToken={setToken} />;
+  if (!token) {
+    return (
+      <>
+        <ToastContainer />
+        <Login setToken={setToken} />
+      </>
+    );
+  }
 
   // ✅ Wait until user info is ready
   if (!user) return <div className="text-center mt-20 text-gray-500">Loading user...</div>;
