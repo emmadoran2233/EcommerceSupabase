@@ -14,13 +14,15 @@ import Footer from "./components/Footer";
 import SearchBar from "./components/SearchBar";
 import Profile from "./pages/Profile";
 import BannerAlert from "./components/BannerAlert";
+import AiChatBox from "./components/AiChatBox";
 import StorePage from "./pages/StorePage";
 import WantedItems from "./pages/WantedItems";
 import ResetPassword from "./pages/ResetPassword";
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Verify from "./pages/Verify";
 
+// Mount aiChat as global layout
 const App = () => {
   return (
     <div className="px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
@@ -44,6 +46,7 @@ const App = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/wanted-items" element={<WantedItems />} />
       </Routes>
+      <AiChatBox />
       <Footer />
     </div>
   );
