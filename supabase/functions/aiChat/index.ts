@@ -1,5 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-//CORS and JSON headers, which allow front-end POST requests
+import {
+  FAQ_ENTRIES,
+  KNOWLEDGE_FACTS,
+  OUT_OF_SCOPE_REPLY,
+  PLATFORM_KEYWORDS,
+  PRODUCT_CONTEXT_KEYWORDS,
+  SUPPORT_EMAIL,
+} from "./knowledge.ts";
+
+// CORS and JSON headers for browser POST requests.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -11,23 +20,45 @@ const corsHeaders = {
 const MAX_MESSAGES = 12;
 const MAX_CONTENT_LENGTH = 1200;
 const MAX_PAGE_CONTEXT_LENGTH = 1800;
-const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";//not sure
-const DEFAULT_MODEL = "gpt-5.5";//not sure yet
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+const DEFAULT_MODEL = "gpt-5-mini";
 
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
 };
-//define message category
+
+// Normalize a text field and cap input length before it reaches the model.
 const sanitizeText = (value: unknown, maxLength = MAX_CONTENT_LENGTH) =>
   typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+
+const normalizeSearchText = (value: string) => value.toLowerCase();
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const includesKeyword = (text: string, keyword: string) => {
+  const normalizedKeyword = normalizeSearchText(keyword).trim();
+  if (!normalizedKeyword) return false;
+
+  if (/[a-z0-9]/i.test(normalizedKeyword)) {
+    const escapedKeyword = escapeRegExp(normalizedKeyword);
+    const suffix = /^[a-z]+$/i.test(normalizedKeyword)
+      ? "(?:s|ed|ing)?"
+      : "";
+    return new RegExp(`\\b${escapedKeyword}${suffix}\\b`, "i").test(text);
+  }
+
+  return text.includes(normalizedKeyword);
+};
 
 const jsonResponse = (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: corsHeaders,
   });
-//mock AI response roles
+
+// Build model instructions from local ReShareLoop facts and safe page context.
 const getSiteInstructions = (pageContext: unknown) => {
   const context =
     pageContext && typeof pageContext === "object"
@@ -38,26 +69,18 @@ const getSiteInstructions = (pageContext: unknown) => {
     "You are ReShareLoop's AI shopping assistant.",
     "Help customers with buying, renting, lending, selling, product discovery, checkout, returns, shipping, account navigation, and basic platform questions.",
     "Use a calm, concise, helpful tone. Keep answers under 140 words unless the customer asks for details.",
+    "Only answer using the known facts and current page context below.",
+    "If the information is not available, say you do not have enough information and recommend the next in-app step or support contact.",
     "Do not invent live order status, inventory changes, payment outcomes, seller promises, legal advice, or policy exceptions.",
-    "For private account, payment, order-specific, refund-specific, or seller-specific issues, explain what the customer can check in the app and recommend contacting ReShareLoop support at contact@reshareloop.com.",
+    `For private account, payment, order-specific, refund-specific, or seller-specific issues, explain what the customer can check in the app and recommend contacting ReShareLoop support at ${SUPPORT_EMAIL}.`,
     "Known ReShareLoop facts:",
-    "- ReShareLoop lets users buy, rent, lend, sell unused items, and offer services.",
-    "- Buyers can browse products, add items to cart, place orders, and manage orders from the Orders page.",
-    "- Sellers/lenders use the seller center to list sale items, lendable items, manage inventory, orders, banners, and store profile.",
-    "- Eligible purchase returns are accepted within 30 days of delivery.",
-    "- New unused return items must be unused, unworn, and in original packaging, with proof of purchase.",
-    "- Clearance, personalized, or final-sale products may not be returnable.",
-    "- Buyers pay return shipping unless the item is defective or incorrect.",
-    "- Approved refunds go back to the original payment method within 5-10 business days.",
-    "- Defective or incorrect items should be reported within 7 days of delivery.",
+    ...KNOWLEDGE_FACTS.map((fact) => `- ${fact}`),
     context ? `Current page context: ${context}` : "",
   ]
     .filter(Boolean)
     .join("\n");
 };
-//Normalize messages received from the browser, 
-//retaining only valid roles and non-empty content, 
-//and retrieve only the most recent 12 entries.
+// Keep only trusted chat roles and bounded text from browser input.
 const normalizeMessages = (messages: unknown): ChatMessage[] => {
   if (!Array.isArray(messages)) return [];
 
@@ -72,7 +95,33 @@ const normalizeMessages = (messages: unknown): ChatMessage[] => {
     })
     .filter(Boolean) as ChatMessage[];
 };
-//
+
+const isProductPage = (pageContext: unknown) =>
+  Boolean(
+    pageContext &&
+      typeof pageContext === "object" &&
+      (pageContext as { page?: unknown }).page === "product"
+  );
+
+const isProductContextQuestion = (text: string, pageContext: unknown) =>
+  isProductPage(pageContext) &&
+  PRODUCT_CONTEXT_KEYWORDS.some((keyword) => includesKeyword(text, keyword));
+
+const isPlatformQuestion = (text: string, pageContext: unknown) => {
+  const normalized = normalizeSearchText(text);
+  return (
+    isProductContextQuestion(normalized, pageContext) ||
+    PLATFORM_KEYWORDS.some((keyword) => includesKeyword(normalized, keyword))
+  );
+};
+
+const findFaqAnswer = (text: string) => {
+  const normalized = normalizeSearchText(text);
+  return FAQ_ENTRIES.find((entry) =>
+    entry.keywords.some((keyword) => includesKeyword(normalized, keyword))
+  );
+};
+
 // Responses may expose text as a shortcut or nested message content.
 const extractText = (response: Record<string, unknown>) => {
   if (typeof response.output_text === "string") {
@@ -96,7 +145,7 @@ const extractText = (response: Record<string, unknown>) => {
 
   return chunks.join("\n").trim();
 };
-//Extract readable error messages from OpenAI error responses.
+// Extract readable error messages from OpenAI error responses.
 const getOpenAiError = (payload: unknown, fallback: string) => {
   if (!payload || typeof payload !== "object") return fallback;
 
@@ -111,16 +160,51 @@ const getOpenAiError = (payload: unknown, fallback: string) => {
 };
 
 serve(async (req) => {
-  //deal w/ CORS
+  // Handle CORS preflight requests.
   if (req.method === "OPTIONS") {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
-  //only POST
+
+  // Only POST is supported for chat requests.
   if (req.method !== "POST") {
     return jsonResponse({ success: false, error: "Method not allowed" }, 405);
   }
 
   try {
+    const body = await req.json().catch(() => ({}));
+    const messages = normalizeMessages(body.messages);
+    // Allows the user to bypass FAQ/scope guard when they explicitly request AI.
+    const forceAi = body.forceAi === true || body.responseMode === "ai";
+    // Require at least one user turn after sanitizing untrusted browser input.
+    const latestUserMessage = [...messages]
+      .reverse()
+      .find((message) => message.role === "user");
+
+    if (!latestUserMessage) {
+      return jsonResponse({ success: false, error: "Missing user message" }, 400);
+    }
+
+    // Reject unrelated questions locally so they do not spend OpenAI tokens.
+    if (!forceAi && !isPlatformQuestion(latestUserMessage.content, body.pageContext)) {
+      return jsonResponse({
+        success: true,
+        reply: OUT_OF_SCOPE_REPLY,
+        source: "scope_guard",
+      });
+    }
+
+    // Return known FAQ answers locally before using the OpenAI API.
+    const faqMatch = forceAi ? null : findFaqAnswer(latestUserMessage.content);
+    if (faqMatch) {
+      return jsonResponse({
+        success: true,
+        reply: faqMatch.answer,
+        source: "faq",
+        faqId: faqMatch.id,
+      });
+    }
+
+    // OpenAI is only required after local answers are exhausted.
     const apiKey = Deno.env.get("OPENAI_API_KEY");
     if (!apiKey) {
       return jsonResponse(
@@ -130,17 +214,6 @@ serve(async (req) => {
         },
         500
       );
-    }
-
-    const body = await req.json().catch(() => ({}));
-    const messages = normalizeMessages(body.messages);
-    // Require at least one user turn after sanitizing untrusted browser input.
-    const latestUserMessage = [...messages]
-      .reverse()
-      .find((message) => message.role === "user");
-
-    if (!latestUserMessage) {
-      return jsonResponse({ success: false, error: "Missing user message" }, 400);
     }
 
     const model = Deno.env.get("OPENAI_MODEL") || DEFAULT_MODEL;
@@ -161,11 +234,25 @@ serve(async (req) => {
     const data = await openAiResponse.json().catch(() => ({}));
 
     if (!openAiResponse.ok) {
+      const requestId = openAiResponse.headers.get("x-request-id");
       const message = getOpenAiError(
         data,
         `OpenAI request failed with status ${openAiResponse.status}`
       );
-      return jsonResponse({ success: false, error: message }, 502);
+      console.error("OpenAI request failed", {
+        status: openAiResponse.status,
+        requestId,
+        error: data,
+      });
+      return jsonResponse(
+        {
+          success: false,
+          error: message,
+          upstreamStatus: openAiResponse.status,
+          requestId,
+        },
+        502
+      );
     }
 
     const reply = extractText(data);
@@ -179,7 +266,7 @@ serve(async (req) => {
       );
     }
 
-    return jsonResponse({ success: true, reply });
+    return jsonResponse({ success: true, reply, source: "openai" });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("aiChat failed:", message);

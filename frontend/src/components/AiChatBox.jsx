@@ -13,6 +13,32 @@ const starterPrompts = [
 const CLIENT_MESSAGE_LIMIT = 12;
 const SUPPORT_EMAIL = "contact@reshareloop.com";
 
+const formatFunctionError = (payload) => {
+  if (!payload || typeof payload !== "object") return "";
+
+  const details = [
+    payload.upstreamStatus ? `Upstream status: ${payload.upstreamStatus}` : "",
+    payload.requestId ? `Request ID: ${payload.requestId}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return `${payload.error || payload.message || ""}${
+    details ? ` ${details}` : ""
+  }`.trim();
+};
+
+const getFunctionErrorMessage = async (error) => {
+  const response = error?.context;
+  if (response && typeof response.json === "function") {
+    const payload = await response.json().catch(() => null);
+    const message = formatFunctionError(payload);
+    if (message) return message;
+  }
+
+  return error instanceof Error ? error.message : "AI chat is unavailable.";
+};
+
 const initialMessages = [
   {
     role: "assistant",
@@ -20,15 +46,19 @@ const initialMessages = [
       "Hi, I can help with shopping, renting, returns, seller setup, and using ReShareLoop.",
   },
 ];
-//define chatBox components
+
+// ChatBox component state and UI behavior.
 const AiChatBox = () => {
   const { products, currency } = useContext(ShopContext);
-  const location = useLocation(); //which page looking at
+  // Track which page the customer is viewing.
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState(initialMessages);
-  const [draft, setDraft] = useState(""); //keep draft
+  // Keep the current textarea draft before it is submitted.
+  const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef(null); //auto scroll
+  // Anchor used to auto-scroll new chat messages into view.
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,27 +90,37 @@ const AiChatBox = () => {
       page: location.pathname,
     };
   }, [currency, location.pathname, products]);
-  // sent user message
-  const sendMessage = async (content) => {
-    const text = content.trim();//trim space between content
-    if (!text || isSending) return;//check null
+  // Send the customer message to the Supabase Edge Function.
+  const sendMessage = async (content, options = {}) => {
+    // Trim empty space and ignore empty or duplicate in-flight submissions.
+    const text = content.trim();
+    if (!text || isSending) return;
 
-    const nextMessages = [...messages, { role: "user", content: text }];
+    const nextMessages = options.skipUserMessage
+      ? messages
+      : [...messages, { role: "user", content: text }];
     setMessages(nextMessages);
     setDraft("");
     setIsSending(true);
-    //call supabase edge function
     try {
+      // Call the aiChat Edge Function instead of calling OpenAI from the browser.
       const { data, error } = await supabase.functions.invoke("aiChat", {
         body: {
           messages: nextMessages.slice(-CLIENT_MESSAGE_LIMIT),
           pageContext,
+          forceAi: options.forceAi === true,
+          responseMode: options.forceAi ? "ai" : "auto",
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(await getFunctionErrorMessage(error));
+      }
       if (data?.success === false) {
-        throw new Error(data.error || "Unable to get an AI response.");
+        const details = data.requestId ? ` Request ID: ${data.requestId}` : "";
+        throw new Error(
+          `${data.error || "Unable to get an AI response."}${details}`
+        );
       }
 
       setMessages((current) => [
@@ -90,29 +130,31 @@ const AiChatBox = () => {
           content:
             data?.reply ||
             "I could not generate a response. Please try again.",
+          canAskAi:
+            !options.forceAi &&
+            (data?.source === "faq" || data?.source === "scope_guard"),
+          originalQuestion: text,
         },
       ]);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "AI chat is unavailable.";
+      const message = await getFunctionErrorMessage(error);
       toast.error(message);
       setMessages((current) => [
         ...current,
         {
           role: "assistant",
-          content:
-            `I am having trouble connecting right now. Please try again, or contact ${SUPPORT_EMAIL} for help.`,
+          content: message,
         },
       ]);
     } finally {
       setIsSending(false);
     }
   };
-  //Process form submission, 
+
+  // Process form submission without letting the browser refresh the page.
   const handleSubmit = (event) => {
-    event.preventDefault();//prevent the browser from refreshing by default,
+    event.preventDefault();
     sendMessage(draft);
-    console.log("form submitted");
   };
 
   return (
@@ -142,15 +184,36 @@ const AiChatBox = () => {
                   message.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
-                <p
-                  className={`max-w-[82%] whitespace-pre-wrap rounded-sm px-3 py-2 text-sm leading-5 ${
-                    message.role === "user"
-                      ? "bg-black text-white"
-                      : "border border-gray-200 bg-white text-gray-700"
-                  }`}
+                <div
+                  className={`max-w-[82%] ${
+                    message.role === "user" ? "items-end" : "items-start"
+                  } flex flex-col gap-2`}
                 >
-                  {message.content}
-                </p>
+                  <p
+                    className={`whitespace-pre-wrap rounded-sm px-3 py-2 text-sm leading-5 ${
+                      message.role === "user"
+                        ? "bg-black text-white"
+                        : "border border-gray-200 bg-white text-gray-700"
+                    }`}
+                  >
+                    {message.content}
+                  </p>
+                  {message.canAskAi && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        sendMessage(message.originalQuestion, {
+                          forceAi: true,
+                          skipUserMessage: true,
+                        })
+                      }
+                      disabled={isSending}
+                      className="self-start border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:border-black disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Need more deep responses
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             {isSending && (
