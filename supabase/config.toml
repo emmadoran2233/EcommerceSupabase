@@ -72,6 +72,12 @@ verify_jwt = true
 import_map = "./functions/extendDepositHold/deno.json"
 entrypoint = "./functions/extendDepositHold/index.ts"
 
+[functions.aiChat]
+enabled = true
+verify_jwt = false
+import_map = "./functions/aiChat/deno.json"
+entrypoint = "./functions/aiChat/index.ts"
+
 # Local Supabase CLI does not accept this legacy cron block.
 # Re-add the scheduled job with the current Supabase cron syntax when deploying
 # deposit hold automation.
