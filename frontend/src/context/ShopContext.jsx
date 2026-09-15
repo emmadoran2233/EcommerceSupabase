@@ -3,10 +3,13 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { calculateCartAmount } from "../domain/cart/calculateCartAmount";
+import { setCartLineQuantity } from "../domain/cart/cartState";
+import { createCartRepository } from "../infrastructure/cart/cartRepository";
 
 export const ShopContext = createContext();
 
 const pendingWelcomeEmailRequests = new Set();
+const cartRepository = createCartRepository(supabase);
 
 const ShopContextProvider = (props) => {
   const currency = "$";
@@ -120,15 +123,17 @@ const ShopContextProvider = (props) => {
     setCartItems(cartData);
     try {
       if (userId) {
-        const { error } = await supabase
-          .from("carts")
-          .update({ items: cartData, updated_at: new Date() })
-          .eq("user_id", userId);
-        if (error) throw error;
+        await cartRepository.saveLine({
+          productId: itemId,
+          sizeKey,
+          entry: cartData[itemId][sizeKey],
+          cartItems: cartData,
+        });
       }
       toast.success("Added to cart!", {autoClose: 800});
     } catch (err) {
       toast.error("Failed to update cart: " + err.message);
+      if (userId) await getUserCart(userId);
     }
   };
 
@@ -145,27 +150,22 @@ const ShopContextProvider = (props) => {
   };
 
   const updateQuantity = async (itemId, size, quantity) => {
-    let cartData = structuredClone(cartItems);
-    if (!cartData[itemId]) cartData[itemId] = {};
-    if (typeof cartData[itemId][size] === "object") {
-      cartData[itemId][size].quantity = quantity;
-    } else {
-      cartData[itemId][size] = quantity;
-    }
+    const cartData = setCartLineQuantity(cartItems, itemId, size, quantity);
 
     setCartItems(cartData);
 
     try {
       if (userId) {
-        const { error } = await supabase
-          .from("carts")
-          .update({ items: cartData, updated_at: new Date() })
-          .eq("user_id", userId);
-
-        if (error) throw error;
+        await cartRepository.saveLine({
+          productId: itemId,
+          sizeKey: size,
+          entry: cartData[String(itemId)]?.[size],
+          cartItems: cartData,
+        });
       }
     } catch (err) {
       toast.error("Failed to update cart: " + err.message);
+      if (userId) await getUserCart(userId);
     }
   };
 
@@ -175,26 +175,8 @@ const ShopContextProvider = (props) => {
 
   const getUserCart = async (userId) => {
     try {
-      const { data, error } = await supabase
-        .from("carts")
-        .select("items")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (error) {
-        toast.error(error.message);
-      } else {
-        if (Array.isArray(data?.items)) {
-          const cartObject = {};
-          data.items.forEach((item) => {
-            if (!cartObject[item.id]) cartObject[item.id] = {};
-            cartObject[item.id][item.size] = item.quantity || 1;
-          });
-          setCartItems(cartObject);
-        } else {
-          setCartItems(data?.items || {});
-        }
-      }
+      const cart = await cartRepository.findByUserId(userId);
+      setCartItems(cart.items);
     } catch (error) {
       toast.error(error.message);
     }

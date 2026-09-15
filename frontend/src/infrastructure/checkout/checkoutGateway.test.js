@@ -1,31 +1,22 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { createCheckoutGateway } from "./checkoutGateway.js";
 
 const makeSupabase = () => {
   const calls = [];
-  const single = async () => ({ data: { id: 7 }, error: null });
-  const select = (columns) => {
-    calls.push(["select", columns]);
-    return { single };
-  };
-  const insert = (rows) => {
-    calls.push(["insert", rows]);
-    return { select };
-  };
   return {
     calls,
     supabase: {
-      from: (table) => {
-        calls.push(["from", table]);
-        return { insert };
+      rpc: async (name, params) => {
+        calls.push(["rpc", name, params]);
+        return { data: 7, error: null };
       },
       functions: { invoke: async () => ({ data: { success: true }, error: null }) },
     },
   };
 };
 
-test("creates orders through the existing Supabase insert chain", async () => {
+test("creates the complete order aggregate through one database RPC", async () => {
   const { supabase, calls } = makeSupabase();
   const gateway = createCheckoutGateway({
     supabase,
@@ -39,9 +30,7 @@ test("creates orders through the existing Supabase insert chain", async () => {
   const result = await gateway.createOrder({ amount: 60 });
   assert.deepEqual(result, { order: { id: 7 }, error: null });
   assert.deepEqual(calls, [
-    ["from", "orders"],
-    ["insert", [{ amount: 60 }]],
-    ["select", "id"],
+    ["rpc", "create_order_with_items", { p_order: { amount: 60 } }],
   ]);
 });
 

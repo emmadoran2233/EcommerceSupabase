@@ -34,6 +34,7 @@ const CustomizationModal = ({
   const handleSave = () => {
     if (disableSave) return;
     const payload = {
+      id: initialValue?.id,
       lines: lines.map((line) => line.trim()),
       color,
     };

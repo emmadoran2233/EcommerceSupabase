@@ -117,6 +117,7 @@ export const useCheckoutController = ({
           deliveryFee,
           paymentMethod,
           userId,
+          checkoutRequestId: globalThis.crypto.randomUUID(),
         });
         const outcome = await submitCheckout({
           method: paymentMethod,

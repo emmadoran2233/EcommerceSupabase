@@ -8,13 +8,11 @@ export const createCheckoutGateway = ({
   logger = console,
 }) => ({
   async createOrder(orderData) {
-    const { data, error } = await supabase
-      .from("orders")
-      .insert([orderData])
-      .select("id")
-      .single();
+    const { data, error } = await supabase.rpc("create_order_with_items", {
+      p_order: orderData,
+    });
 
-    return { order: data, error };
+    return { order: data == null ? null : { id: data }, error };
   },
 
   async notifyOrderSubmitted(orderId) {
