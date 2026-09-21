@@ -291,7 +291,6 @@ const Orders = ({ token, user }) => {
           action: "buy_label",
           orderId,
           rateId: selectedRate.id,
-          selectedRate,
         },
       });
 
@@ -306,7 +305,11 @@ const Orders = ({ token, user }) => {
         trackingUrl: data.trackingUrl || "",
         mode: "shippo",
       });
-      toast.success("Shipping label purchased.");
+      toast.success(
+        data.testMode
+          ? "Test shipping label generated. No live charge was made."
+          : "Shipping label purchased."
+      );
       await fetchAllOrders();
     } catch (error) {
       console.error("Shippo label error:", error);

@@ -9,7 +9,7 @@ export default defineConfig({
     environment: 'node',
     include: [
       'src/**/*.test.{js,jsx}',
-      '../supabase/functions/_shared/**/*.test.js',
+      '../supabase/functions/**/*.test.js',
     ],
   },
 })
