@@ -55,13 +55,12 @@ const Orders = () => {
       });
       const formattedOrders = result.orders.map((order) => ({
         id: order.id,
-        status: order.status,
+        status: order.displayStatus || order.status,
         payment: order.payment,
         paymentmethod: order.paymentmethod,
         date: order.date || order.created_at,
         items: order.items || [],
-        shippingTrackingNumber: order.shipping_tracking_number || "",
-        shippingTrackingUrl: order.shipping_tracking_url || "",
+        shipments: order.fulfillments || [],
       }));
 
       setOrderData(formattedOrders);
@@ -256,26 +255,63 @@ const Orders = () => {
                 </button>
               </div>
 
-              {(order.shippingTrackingNumber || order.shippingTrackingUrl) && (
-                <div className="mt-3 text-sm text-gray-600">
-                  {order.shippingTrackingNumber && (
-                    <p>
-                      Tracking #:{" "}
-                      <span className="font-medium text-black">
-                        {order.shippingTrackingNumber}
-                      </span>
-                    </p>
-                  )}
-                  {order.shippingTrackingUrl && (
-                    <a
-                      href={order.shippingTrackingUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-blue-600 underline"
-                    >
-                      Track shipment
-                    </a>
-                  )}
+              {order.shipments.length > 0 && (
+                <div className="mt-4 border-t border-gray-200 pt-3">
+                  <p className="mb-2 text-sm font-semibold text-black">
+                    Shipment progress
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {order.shipments.map((shipment, index) => (
+                      <div
+                        key={shipment.sellerId || `legacy-${index}`}
+                        className="border border-gray-200 bg-white p-3 text-sm"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-black">
+                              Shipment {index + 1} · {shipment.sellerName}
+                            </p>
+                            {shipment.items.length > 0 && (
+                              <p className="mt-1 text-xs text-gray-500">
+                                {shipment.items
+                                  .map((item) => `${item.name} × ${item.quantity}`)
+                                  .join(" · ")}
+                              </p>
+                            )}
+                          </div>
+                          <span className="bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+                            {shipment.statusLabel}
+                          </span>
+                        </div>
+
+                        {(shipment.carrier || shipment.service) && (
+                          <p className="mt-2 text-gray-600">
+                            {[shipment.carrier, shipment.service]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                        )}
+                        {shipment.trackingNumber && (
+                          <p className="mt-2 text-gray-600">
+                            Tracking #:{" "}
+                            <span className="font-medium text-black">
+                              {shipment.trackingNumber}
+                            </span>
+                          </p>
+                        )}
+                        {shipment.trackingUrl && (
+                          <a
+                            href={shipment.trackingUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-1 inline-block text-blue-600 underline"
+                          >
+                            Track this shipment
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

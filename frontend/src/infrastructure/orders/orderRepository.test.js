@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createOrderRepository } from "./orderRepository.js";
 
-const createClient = ({ orders, orderItems, itemError = null }) => ({
+const createClient = ({
+  orders,
+  orderItems,
+  fulfillments = [],
+  profiles = [],
+  itemError = null,
+  fulfillmentError = null,
+}) => ({
   from(table) {
     if (table === "orders") {
       const query = {
@@ -15,10 +22,26 @@ const createClient = ({ orders, orderItems, itemError = null }) => ({
       return query;
     }
 
+    if (table === "order_items") {
+      const query = {
+        select: () => query,
+        in: () => query,
+        order: async () => ({ data: orderItems, error: itemError }),
+      };
+      return query;
+    }
+
+    if (table === "seller_fulfillments") {
+      const query = {
+        select: () => query,
+        in: async () => ({ data: fulfillments, error: fulfillmentError }),
+      };
+      return query;
+    }
+
     const query = {
       select: () => query,
-      in: () => query,
-      order: async () => ({ data: orderItems, error: itemError }),
+      in: async () => ({ data: profiles, error: null }),
     };
     return query;
   },
@@ -80,5 +103,45 @@ describe("order repository", () => {
     } finally {
       console.warn = originalWarn;
     }
+  });
+
+  test("hydrates multi-seller fulfillment and profile data in batches", async () => {
+    const repository = createOrderRepository(
+      createClient({
+        orders: [{ id: 9, status: "Shipped", items: [] }],
+        orderItems: [
+          { order_id: 9, line_number: 1, seller_id: "seller-1", product_name: "One" },
+          { order_id: 9, line_number: 2, seller_id: "seller-2", product_name: "Two" },
+        ],
+        fulfillments: [
+          { order_id: 9, seller_id: "seller-1", status: "shipped", tracking_number: "TRACK-1" },
+          { order_id: 9, seller_id: "seller-2", status: "pending" },
+        ],
+        profiles: [
+          { id: "seller-1", name: "First Store" },
+          { id: "seller-2", name: "Second Store" },
+        ],
+      })
+    );
+
+    const result = await repository.findBuyerOrders({
+      userId: "buyer-1",
+      page: 1,
+      pageSize: 10,
+      status: "",
+      orderId: null,
+    });
+
+    assert.equal(result.orders[0].displayStatus, "Partially shipped");
+    assert.deepEqual(
+      result.orders[0].fulfillments.map((shipment) => [
+        shipment.sellerName,
+        shipment.trackingNumber,
+      ]),
+      [
+        ["First Store", "TRACK-1"],
+        ["Second Store", ""],
+      ]
+    );
   });
 });

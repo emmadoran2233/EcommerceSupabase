@@ -31,9 +31,11 @@ must have supporting indexes before traffic is moved to the normalized tables.
    Shippo authorization now use the shared normalized-first adapter, and
    reorder writes normalized carts atomically. Buyer and seller order pages now
    use normalized read models. Seller manual status and tracking writes now use
-   per-seller fulfillments through an ownership-checked RPC. Payment, Shippo
-   label persistence, buyer multi-shipment display, and future platform-admin
-   order screens remain migration targets.
+   per-seller fulfillments through ownership-checked RPCs. Shippo labels now use
+   normalized seller ownership, per-fulfillment persistence, and an atomic
+   purchase reservation. Buyer order history now presents independent seller
+   shipments with batched reads. Payment and future platform-admin order
+   screens remain migration targets.
 8. Switch all remaining reads, observe production, and only then validate
    deferred constraints.
 9. Remove legacy columns in a separate contract release.
