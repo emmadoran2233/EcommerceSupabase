@@ -45,9 +45,9 @@ export const createCartRepository = (supabase) => ({
     return { cartId: cart.id, ...readableCart };
   },
 
-  async saveLine({ productId, sizeKey, entry, cartItems }) {
+  async saveLine({ productId, sizeKey, entry }) {
     const line = toCartLinePayload({ productId, sizeKey, entry });
-    const { data, error } = await supabase.rpc("set_cart_line", {
+    const { data, error } = await supabase.rpc("set_normalized_cart_line", {
       p_product_id: line.productId,
       p_line_key: line.lineKey,
       p_quantity: line.quantity,
@@ -56,7 +56,6 @@ export const createCartRepository = (supabase) => ({
       p_rental_start_date: line.rentalStartDate,
       p_rental_end_date: line.rentalEndDate,
       p_rental_quote: line.rentalQuote,
-      p_legacy_items: cartItems || {},
     });
 
     throwIfError(error);

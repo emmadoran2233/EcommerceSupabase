@@ -127,7 +127,6 @@ const ShopContextProvider = (props) => {
           productId: itemId,
           sizeKey,
           entry: cartData[itemId][sizeKey],
-          cartItems: cartData,
         });
       }
       toast.success("Added to cart!", {autoClose: 800});
@@ -160,7 +159,6 @@ const ShopContextProvider = (props) => {
           productId: itemId,
           sizeKey: size,
           entry: cartData[String(itemId)]?.[size],
-          cartItems: cartData,
         });
       }
     } catch (err) {

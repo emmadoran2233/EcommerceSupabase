@@ -10,6 +10,7 @@
 ## Transaction model
 
 - `orders`: buyer-level order
+- `orders.order_number`: immutable public reference (`UTC timestamp-short id-integer`)
 - `order_items`: normalized immutable lines
 - `seller_fulfillments`: per-seller fulfillment
 - `order_payments`: provider-neutral payment lifecycle
@@ -22,10 +23,14 @@ must have supporting indexes before traffic is moved to the normalized tables.
 
 1. Apply schema expansion in a staging or preview environment.
 2. Bootstrap the first platform administrator using the reviewed out-of-band runbook.
-3. Run pgTAP tests and both verification SQL files.
+3. Run pgTAP tests and all verification SQL files, including the legacy-contract
+   readiness report.
 4. Resolve ambiguous identities without guessing.
 5. Run `backfill_relational_data()` to backfill only deterministic identities,
-   order lines, single-seller fulfillment, and recognized cart lines.
+   order lines, single-seller fulfillment, and recognized cart lines. Then run
+   `backfill_missing_seller_fulfillments()` to create a pending aggregate for
+   every remaining normalized order/seller pair without copying ambiguous
+   shared tracking data.
 6. Compare row counts, seller ownership, money totals, and rental dates.
 7. Add dual-read application code and Edge Function contract tests. Email and
    Shippo authorization now use the shared normalized-first adapter, and
@@ -51,3 +56,8 @@ The following changes require verified data and are intentionally not forced yet
 - Remove `reviews.product_id` after all readers use `reviews.product_uuid`.
 - Remove JSON cart and order items after normalized dual-read verification.
 - Move global BannerControl out of the seller portal.
+- Remove `orders.order_id` only after all public and provider references use
+  `orders.order_number` or a provider-specific field.
+
+The exact contract-removal gates and release order are documented in
+[`legacy-contract-removal.md`](./legacy-contract-removal.md).
