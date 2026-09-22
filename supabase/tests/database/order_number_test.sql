@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(10);
+select plan(11);
 
 select has_column('public', 'orders', 'order_number', 'orders should expose a public order number');
 select col_not_null('public', 'orders', 'order_number', 'public order numbers should be required');
@@ -64,6 +64,23 @@ select throws_like(
   ),
   '%Order number is immutable%',
   'an assigned public order number should be immutable'
+);
+
+-- Reproduce the production migration condition: a row exists before the
+-- canonical column is introduced and therefore starts with a NULL value.
+alter table public.orders alter column order_number drop not null;
+alter table public.orders disable trigger set_orders_order_number;
+insert into public.orders (items, amount, order_number)
+values ('[]'::jsonb, 0, null)
+returning id \gset legacy_order_
+alter table public.orders enable trigger set_orders_order_number;
+
+select lives_ok(
+  format(
+    'update public.orders set order_number = public.format_order_number(created_at, id) where id = %L',
+    :'legacy_order_id'
+  ),
+  'a historical row should accept its first backfilled order number'
 );
 
 select * from finish();

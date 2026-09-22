@@ -28,7 +28,11 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  if tg_op = 'UPDATE' and new.order_number is distinct from old.order_number then
+  -- Historical rows are allowed to move from NULL to their first canonical
+  -- number during this migration. Once assigned, the number is immutable.
+  if tg_op = 'UPDATE'
+    and old.order_number is not null
+    and new.order_number is distinct from old.order_number then
     raise exception 'Order number is immutable' using errcode = '22023';
   end if;
 
