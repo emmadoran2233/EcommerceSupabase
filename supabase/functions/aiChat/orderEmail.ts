@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml, sendTransactionalEmail } from "../_shared/mailer.ts";
+import { hydrateOrderWithItems } from "../_shared/orderItems.js";
 import { SUPPORT_EMAIL } from "./knowledge.ts";
 
 type OrderItem = {
@@ -19,6 +20,7 @@ type OrderItem = {
 
 type OrderRow = {
   id: number;
+  order_number?: string;
   items?: OrderItem[];
   amount?: number | string;
   status?: string;
@@ -34,6 +36,7 @@ type OrderRow = {
 
 const SELECT_ORDER_FIELDS = [
   "id",
+  "order_number",
   "items",
   "amount",
   "status",
@@ -49,6 +52,7 @@ const SELECT_ORDER_FIELDS = [
 
 const BASE_ORDER_FIELDS = [
   "id",
+  "order_number",
   "items",
   "amount",
   "status",
@@ -96,10 +100,14 @@ const itemAmount = (item: OrderItem) => {
   return ensureNumber(item.price || item.price_per_day) * itemQuantity(item);
 };
 
-const extractOrderId = (message: string) => {
-  const match = message.match(/(?:order\s*#?|订单\s*#?)\s*(\d+)/i);
-  return match ? Number(match[1]) : null;
+const extractOrderReference = (message: string) => {
+  const match = message.match(
+    /(?:order\s*#?|订单\s*#?)\s*([0-9]{14}-[a-f0-9]{6}-[0-9]{8,}|\d+)/i
+  );
+  return match ? match[1].toUpperCase() : null;
 };
+
+const getOrderNumber = (order: OrderRow) => order.order_number || String(order.id);
 
 const getOrderCurrency = (order: OrderRow) =>
   String(order.charge_currency || order.deposit_currency || "USD")
@@ -123,7 +131,7 @@ const buildOrderText = (order: OrderRow) => {
     : ["- No item details were included with this order."];
 
   return [
-    `Order #${order.id}`,
+    `Order #${getOrderNumber(order)}`,
     `Date: ${formatDate(order.date || order.created_at)}`,
     `Status: ${order.status || "N/A"}`,
     `Payment: ${order.payment ? "Paid" : "Not paid"}`,
@@ -186,7 +194,7 @@ const buildOrderHtml = (order: OrderRow) => {
     <div style="font-family:Arial,Helvetica,sans-serif;color:#111827;line-height:1.5;">
       <h1 style="font-size:22px;">Your ReShareLoop order summary</h1>
       <p>Here is the order information you requested from ReShareLoop chat.</p>
-      <p><strong>Order #${escapeHtml(order.id)}</strong></p>
+      <p><strong>Order #${escapeHtml(getOrderNumber(order))}</strong></p>
       <p><strong>Date:</strong> ${escapeHtml(formatDate(order.date || order.created_at))}</p>
       <p><strong>Status:</strong> ${escapeHtml(order.status || "N/A")}</p>
       <p><strong>Payment:</strong> ${escapeHtml(order.payment ? "Paid" : "Not paid")}</p>
@@ -249,15 +257,17 @@ export const sendOrderSummaryEmail = async (
     };
   }
 
-  const requestedOrderId = extractOrderId(latestUserMessage);
+  const requestedOrderReference = extractOrderReference(latestUserMessage);
   const ownerFilter = `buyer_id.eq.${authData.user.id},user_id.eq.${authData.user.id}`;
   const buildQuery = (fields: string) => {
-    if (requestedOrderId) {
-      return userSupabase
+    if (requestedOrderReference) {
+      const orderQuery = userSupabase
         .from("orders")
         .select(fields)
-        .or(ownerFilter)
-        .eq("id", requestedOrderId);
+        .or(ownerFilter);
+      return /^\d+$/.test(requestedOrderReference)
+        ? orderQuery.eq("id", requestedOrderReference)
+        : orderQuery.eq("order_number", requestedOrderReference);
     } else {
       return userSupabase
         .from("orders")
@@ -279,22 +289,29 @@ export const sendOrderSummaryEmail = async (
     throw new Error(error.message);
   }
 
-  const order = Array.isArray(data) ? (data[0] as OrderRow | undefined) : null;
-  if (!order) {
+  const legacyOrder = Array.isArray(data)
+    ? (data[0] as OrderRow | undefined)
+    : null;
+  if (!legacyOrder) {
     return {
       success: true,
-      reply: requestedOrderId
+      reply: requestedOrderReference
         ? "I could not find that order on your ReShareLoop account. Please check the order number on your Orders page."
         : "I could not find any orders on your ReShareLoop account yet.",
       source: "order_email",
     };
   }
 
+  const order = (await hydrateOrderWithItems(
+    userSupabase,
+    legacyOrder
+  )) as OrderRow;
   const serviceSupabase = createServiceClient();
+  const orderNumber = getOrderNumber(order);
   const result = await sendTransactionalEmail({
     supabase: serviceSupabase,
     to: authData.user.email,
-    subject: `Your ReShareLoop order #${order.id} summary`,
+    subject: `Your ReShareLoop order #${orderNumber} summary`,
     html: buildOrderHtml(order),
     text: buildOrderText(order),
     eventType: "chat_order_summary_requested",
@@ -312,7 +329,7 @@ export const sendOrderSummaryEmail = async (
   if (result.sent || result.skipped) {
     return {
       success: true,
-      reply: `I sent order #${order.id} to the email address on your ReShareLoop account.`,
+      reply: `I sent order #${orderNumber} to the email address on your ReShareLoop account.`,
       source: "order_email",
       orderId: order.id,
     };

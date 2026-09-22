@@ -7,6 +7,9 @@ export default defineConfig({
   server: { port: 5173 },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.{js,jsx}'],
+    include: [
+      'src/**/*.test.{js,jsx}',
+      '../supabase/functions/**/*.test.js',
+    ],
   },
 })

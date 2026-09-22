@@ -6,6 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers":
     "Authorization, X-Client-Info, apikey, Content-Type",
+  "Content-Type": "application/json",
 };
 
 serve(async (req) => {
@@ -13,10 +14,15 @@ serve(async (req) => {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ success: false, message: "Method not allowed" }),
+      { status: 405, headers: corsHeaders }
+    );
+  }
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
     const userSupabase = createClient(
       supabaseUrl,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -37,86 +43,48 @@ serve(async (req) => {
       );
     }
 
-    const body = await req.json();
-    const user_id = authData.user.id;
-    const order_id = Number(body.order_id);
+    const body = await req.json().catch(() => ({}));
+    const orderId = Number(body.order_id);
 
-    if (!user_id || !order_id) {
+    if (!Number.isSafeInteger(orderId) || orderId <= 0) {
       return new Response(
         JSON.stringify({
           success: false,
-          message: "Missing user_id or order_id",
+          message: "A valid order_id is required",
         }),
         { status: 400, headers: corsHeaders }
       );
     }
 
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .select("items")
-      .eq("id", order_id)
-      .or(`buyer_id.eq.${user_id},user_id.eq.${user_id}`)
-      .single();
+    const { data, error } = await userSupabase.rpc("reorder_into_cart", {
+      p_order_id: orderId,
+    });
 
-    if (orderError || !order) {
-      console.log("⚠️ Order not found:", orderError);
+    if (error) {
+      const orderNotFound = error.message === "Order not found";
+      console.error("Reorder transaction failed:", error.message);
       return new Response(
-        JSON.stringify({ success: false, message: "Order not found" }),
-        { status: 404, headers: corsHeaders }
+        JSON.stringify({
+          success: false,
+          message: orderNotFound ? "Order not found" : "Unable to reorder items",
+        }),
+        { status: orderNotFound ? 404 : 500, headers: corsHeaders }
       );
-    }
-
-    const orderItems = Array.isArray(order.items) ? order.items : [];
-    console.log("🧠 ORDER DEBUG:", order_id, user_id, order);
-
-    const { data: existingCart, error: cartError } = await supabase
-      .from("carts")
-      .select("items")
-      .eq("user_id", user_id)
-      .maybeSingle();
-
-    if (cartError) throw cartError;
-    const existingItems = Array.isArray(existingCart?.items)
-      ? existingCart.items
-      : [];
-
-    const combinedMap = new Map();
-    existingItems.forEach((item) => {
-      if (item && item.id && item.size) {
-        combinedMap.set(`${item.id}_${item.size}`, { ...item });
-      }
-    });
-    orderItems.forEach((item) => {
-      if (!item || !item.id || !item.size) return;
-      const key = `${item.id}_${item.size}`;
-      if (combinedMap.has(key)) {
-        combinedMap.get(key).quantity += item.quantity || 1;
-      } else {
-        combinedMap.set(key, { ...item });
-      }
-    });
-
-    const mergedItems = Array.from(combinedMap.values());
-    if (existingCart) {
-      await supabase
-        .from("carts")
-        .update({ items: mergedItems })
-        .eq("user_id", user_id);
-    } else {
-      await supabase.from("carts").insert([{ user_id, items: orderItems }]);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
         message: "Reorder items merged into cart!",
+        result: data,
       }),
       { status: 200, headers: corsHeaders }
     );
-  } catch (err) {
-    console.error("💥 Reorder Error:", err);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Reorder error:", message);
     return new Response(
-      JSON.stringify({ success: false, message: err.message }),
+      JSON.stringify({ success: false, message: "Unable to reorder items" }),
       { status: 500, headers: corsHeaders }
     );
   }

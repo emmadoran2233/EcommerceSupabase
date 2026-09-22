@@ -61,13 +61,10 @@ describe("cart repository", () => {
       productId: "30000000-0000-4000-8000-000000000003",
       sizeKey: "M",
       entry: 2,
-      cartItems: {
-        "30000000-0000-4000-8000-000000000003": { M: 2 },
-      },
     });
 
     assert.deepEqual(result, { cartId: "cart-1" });
-    assert.equal(calls[0][0], "set_cart_line");
+    assert.equal(calls[0][0], "set_normalized_cart_line");
     assert.equal(calls[0][1].p_quantity, 2);
     assert.equal(calls[0][1].p_size, "M");
   });
@@ -82,7 +79,6 @@ describe("cart repository", () => {
         productId: "product-1",
         sizeKey: "M",
         entry: 1,
-        cartItems: { "product-1": { M: 1 } },
       }),
       /write failed/
     );

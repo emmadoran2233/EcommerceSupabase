@@ -3,6 +3,10 @@ import { toast } from "react-toastify";
 import { assets } from "../assets/assets";
 import { currency } from "../App";
 import { supabase } from "../supabaseClient.js";
+import { createSellerOrderRepository } from "../infrastructure/orders/orderRepository.js";
+import { toFulfillmentStatus } from "../domain/orders/orderItemReadModel.js";
+
+const orderRepository = createSellerOrderRepository(supabase);
 
 const ORDER_STATUS_OPTIONS = [
   "Order Placed",
@@ -59,7 +63,8 @@ const inputClass = "border border-gray-300 px-3 py-2 text-sm outline-none focus:
 const labelClass = "text-xs font-semibold text-gray-700";
 const helperClass = "text-[11px] leading-4 text-gray-500";
 
-const getOrderDisplayId = (order) => order.order_id || order.id;
+const getOrderDisplayId = (order) =>
+  order.order_number || order.order_id || order.id;
 
 const formatAddressName = (address = {}) =>
   [address.firstName, address.lastName].filter(Boolean).join(" ");
@@ -194,27 +199,22 @@ const Orders = ({ token, user }) => {
     if (!token || !user?.id) return;
 
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      // The database policy already scopes access, but the UI still filters orders
-      // down to the current seller's line items before rendering totals/actions.
-      const sellerOrders = (data || []).filter(
-        (order) => getSellerItems(order, user.id).length > 0
-      );
+      const sellerOrders = await orderRepository.findAll(user.id);
 
       setOrders(sellerOrders);
       setShippingDrafts(
         sellerOrders.reduce((drafts, order) => {
+          const fulfillment = order.fulfillment || {};
           drafts[order.id] = {
             ...createDefaultDraft(user),
-            mode: order.shipping_provider === "shippo" ? "shippo" : "manual",
-            trackingNumber: order.shipping_tracking_number || "",
-            trackingUrl: order.shipping_tracking_url || "",
+            mode:
+              (fulfillment.shipping_provider || order.shipping_provider) === "shippo"
+                ? "shippo"
+                : "manual",
+            trackingNumber:
+              fulfillment.tracking_number || order.shipping_tracking_number || "",
+            trackingUrl:
+              fulfillment.tracking_url || order.shipping_tracking_url || "",
           };
           return drafts;
         }, {})
@@ -292,7 +292,6 @@ const Orders = ({ token, user }) => {
           action: "buy_label",
           orderId,
           rateId: selectedRate.id,
-          selectedRate,
         },
       });
 
@@ -307,7 +306,11 @@ const Orders = ({ token, user }) => {
         trackingUrl: data.trackingUrl || "",
         mode: "shippo",
       });
-      toast.success("Shipping label purchased.");
+      toast.success(
+        data.testMode
+          ? "Test shipping label generated. No live charge was made."
+          : "Shipping label purchased."
+      );
       await fetchAllOrders();
     } catch (error) {
       console.error("Shippo label error:", error);
@@ -327,37 +330,36 @@ const Orders = ({ token, user }) => {
       );
 
       if (!confirmed) {
-        event.target.value = order.status;
+        event.target.value = order.sellerStatus || order.status;
         return;
       }
     }
 
     const shippingDraft = getDraft(orderId);
-    const updatePayload = {
-      status,
-      shipping_tracking_number: shippingDraft.trackingNumber.trim() || null,
-      shipping_tracking_url: shippingDraft.trackingUrl.trim() || null,
-    };
+    const fulfillmentStatus = toFulfillmentStatus(status);
 
     try {
       // Manual tracking details are saved with the status update so sellers can
       // fill tracking first and then mark the order as shipped in one action.
-      const { error } = await supabase
-        .from("orders")
-        .update(updatePayload)
-        .eq("id", orderId);
-
-      if (error) throw error;
+      const result = await orderRepository.updateFulfillment({
+        orderId,
+        status: fulfillmentStatus,
+        trackingNumber: shippingDraft.trackingNumber.trim() || null,
+        trackingUrl: shippingDraft.trackingUrl.trim() || null,
+      });
+      const aggregateStatus = result?.order_status || status;
 
       const eventType =
-        status === "Cancelled" ? "order_cancelled" : "order_status_updated";
+        aggregateStatus === "Cancelled"
+          ? "order_cancelled"
+          : "order_status_updated";
 
       const { data: emailData, error: emailError } =
         await supabase.functions.invoke("sendOrderEmails", {
           body: {
             orderId,
             eventType,
-            status,
+            status: aggregateStatus,
           },
         });
 
@@ -444,7 +446,7 @@ const Orders = ({ token, user }) => {
               <div className="flex flex-col gap-3">
                 <SelectField
                   label="Order status"
-                  value={order.status}
+                  value={order.sellerStatus || order.status}
                   onChange={(event) => statusHandler(event, order)}
                 >
                   {ORDER_STATUS_OPTIONS.map((status) => (
@@ -749,9 +751,13 @@ const Orders = ({ token, user }) => {
                       </>
                     )}
 
-                    {order.shipping_label_url && (
+                    {(order.fulfillment?.shipping_label_url ||
+                      order.shipping_label_url) && (
                       <a
-                        href={order.shipping_label_url}
+                        href={
+                          order.fulfillment?.shipping_label_url ||
+                          order.shipping_label_url
+                        }
                         target="_blank"
                         rel="noreferrer"
                         className="text-sm text-blue-600 underline"

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { escapeHtml, sendTransactionalEmail } from "../_shared/mailer.ts";
+import { hydrateOrdersWithItems } from "../_shared/orderItems.js";
 import { SUPPORT_EMAIL } from "./knowledge.ts";
 
 type OrderItem = {
@@ -18,6 +19,7 @@ type OrderItem = {
 
 type OrderRow = {
   id: number;
+  order_number?: string;
   items?: OrderItem[];
   amount?: number | string;
   status?: string;
@@ -35,6 +37,7 @@ const RECENT_ORDER_LIMIT = 5;
 
 const ORDER_SELECT_FIELDS = [
   "id",
+  "order_number",
   "items",
   "amount",
   "status",
@@ -50,6 +53,7 @@ const ORDER_SELECT_FIELDS = [
 
 const BASE_ORDER_SELECT_FIELDS = [
   "id",
+  "order_number",
   "items",
   "amount",
   "status",
@@ -91,6 +95,8 @@ const getCurrency = (order: OrderRow) =>
   String(order.charge_currency || order.deposit_currency || "USD")
     .toUpperCase();
 
+const getOrderNumber = (order: OrderRow) => order.order_number || String(order.id);
+
 const itemQuantity = (item: OrderItem) =>
   Math.max(ensureNumber(item.quantity || 1), 1);
 
@@ -122,7 +128,7 @@ const orderTextBlock = (order: OrderRow) => {
     : ["  - No item details were included with this order."];
 
   return [
-    `Order #${order.id}`,
+    `Order #${getOrderNumber(order)}`,
     `Date: ${formatDate(order.date || order.created_at)}`,
     `Status: ${order.status || "N/A"}`,
     `Payment: ${order.payment ? "Paid" : "Not paid"}`,
@@ -181,7 +187,7 @@ const orderHtmlBlock = (order: OrderRow) => {
 
   return `
     <section style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:16px 0;">
-      <h2 style="font-size:18px;margin:0 0 8px;">Order #${escapeHtml(order.id)}</h2>
+      <h2 style="font-size:18px;margin:0 0 8px;">Order #${escapeHtml(getOrderNumber(order))}</h2>
       <p style="margin:4px 0;"><strong>Date:</strong> ${escapeHtml(
         formatDate(order.date || order.created_at)
       )}</p>
@@ -273,7 +279,11 @@ const fetchRecentOrders = async (
   }
 
   if (error) throw new Error(error.message);
-  return Array.isArray(data) ? (data as OrderRow[]) : [];
+  const orders = Array.isArray(data) ? (data as OrderRow[]) : [];
+  return (await hydrateOrdersWithItems(
+    userSupabase,
+    orders
+  )) as OrderRow[];
 };
 
 export const sendRecentOrderSummaryEmail = async (req: Request) => {
