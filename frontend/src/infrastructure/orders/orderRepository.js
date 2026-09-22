@@ -3,6 +3,7 @@ import { attachOrderFulfillmentReadModels } from "../../domain/orders/orderFulfi
 
 const ORDER_FIELDS = [
   "id",
+  "order_number",
   "items",
   "status",
   "payment",
@@ -57,7 +58,12 @@ export const createOrderRepository = (supabase) => ({
       .or(`buyer_id.eq.${userId},user_id.eq.${userId}`);
 
     if (status) query = query.eq("status", status);
-    if (orderId) query = query.eq("id", orderId);
+    if (orderId) {
+      const reference = String(orderId).trim();
+      query = /^\d+$/.test(reference)
+        ? query.eq("id", reference)
+        : query.eq("order_number", reference.toUpperCase());
+    }
 
     const { data, error, count } = await query
       .order("created_at", { ascending: false })

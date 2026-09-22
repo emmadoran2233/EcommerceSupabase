@@ -36,21 +36,23 @@ serve(async (req) => {
       });
     }
 
-    const { orderId } = await req.json();
+    const { orderId, orderNumber } = await req.json();
 
-    if (!orderId) {
-      return new Response(JSON.stringify({ success: false, error: "Missing orderId" }), {
+    if (!orderId && !orderNumber) {
+      return new Response(JSON.stringify({ success: false, error: "Missing order reference" }), {
         status: 400,
         headers: corsHeaders,
       });
     }
 
-    const { data, error } = await supabase
+    let orderQuery = supabase
       .from("orders")
-      .select("id, status, payment")
-      .eq("id", orderId)
-      .or(`buyer_id.eq.${authData.user.id},user_id.eq.${authData.user.id}`)
-      .single();
+      .select("id, order_number, status, payment")
+      .or(`buyer_id.eq.${authData.user.id},user_id.eq.${authData.user.id}`);
+    orderQuery = orderNumber
+      ? orderQuery.eq("order_number", String(orderNumber).trim().toUpperCase())
+      : orderQuery.eq("id", orderId);
+    const { data, error } = await orderQuery.single();
 
     if (error) {
       return new Response(JSON.stringify({ success: false, error: error.message }), {

@@ -38,23 +38,17 @@ const Orders = () => {
     try {
       setLoading(true);
       const trimmedOrderId = orderIdSearch.trim();
-      const searchedOrderId = trimmedOrderId ? Number(trimmedOrderId) : null;
-
-      if (trimmedOrderId && !Number.isInteger(searchedOrderId)) {
-        setOrderData([]);
-        setTotalOrders(0);
-        return;
-      }
 
       const result = await orderRepository.findBuyerOrders({
         userId: user.id,
         page,
         pageSize,
         status: statusFilter,
-        orderId: searchedOrderId,
+        orderId: trimmedOrderId || null,
       });
       const formattedOrders = result.orders.map((order) => ({
         id: order.id,
+        orderNumber: order.order_number || String(order.id),
         status: order.displayStatus || order.status,
         payment: order.payment,
         paymentmethod: order.paymentmethod,
@@ -143,7 +137,7 @@ const Orders = () => {
             type="search"
             value={orderIdSearch}
             onChange={(event) => setOrderIdSearch(event.target.value)}
-            placeholder="Search order #"
+            placeholder="20260921214530-ABCDEF-00000123"
             className="border border-gray-300 px-3 py-2 outline-none focus:border-black"
           />
         </label>
@@ -205,7 +199,7 @@ const Orders = () => {
           {orderData.map((order) => (
             <div key={order.id} className="py-4 border-t border-b text-gray-700">
               <p className="font-semibold mb-2">
-                Order #{order.id}{" "}
+                Order #{order.orderNumber}{" "}
                 <span className="text-sm text-gray-500 ml-2">
                   {new Date(order.date).toLocaleDateString()}
                 </span>

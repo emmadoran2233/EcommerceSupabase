@@ -22,7 +22,7 @@ serve(
     findSellerOrder: async ({ orderId, sellerId }) => {
       const { data: order, error: orderError } = await adminClient
         .from("orders")
-        .select("id,address")
+        .select("id,order_number,address")
         .eq("id", orderId)
         .maybeSingle();
       if (orderError) throw orderError;

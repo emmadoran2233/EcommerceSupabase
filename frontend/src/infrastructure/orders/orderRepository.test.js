@@ -9,13 +9,17 @@ const createClient = ({
   profiles = [],
   itemError = null,
   fulfillmentError = null,
+  onOrderEq = null,
 }) => ({
   from(table) {
     if (table === "orders") {
       const query = {
         select: () => query,
         or: () => query,
-        eq: () => query,
+        eq: (...args) => {
+          onOrderEq?.(...args);
+          return query;
+        },
         order: () => query,
         range: async () => ({ data: orders, error: null, count: orders.length }),
       };
@@ -143,5 +147,28 @@ describe("order repository", () => {
         ["Second Store", ""],
       ]
     );
+  });
+
+  test("searches formatted public order numbers without exposing bigint ids", async () => {
+    const filters = [];
+    const repository = createOrderRepository(
+      createClient({
+        orders: [],
+        orderItems: [],
+        onOrderEq: (...args) => filters.push(args),
+      })
+    );
+
+    await repository.findBuyerOrders({
+      userId: "buyer-1",
+      page: 1,
+      pageSize: 10,
+      status: "",
+      orderId: "20260921214530-abcdef-00000123",
+    });
+
+    assert.deepEqual(filters, [
+      ["order_number", "20260921214530-ABCDEF-00000123"],
+    ]);
   });
 });

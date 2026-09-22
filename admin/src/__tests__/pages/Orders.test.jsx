@@ -54,6 +54,7 @@ describe('Orders', () => {
   test('fetches orders on mount and renders order row', async () => {
     const order = {
       id: 1,
+      order_number: '20260921214530-ABCDEF-00000001',
       items: [
         { name: 'Shirt', quantity: 2, size: 'M', seller_id: sellerUser.id, price: 50 },
         { name: 'Pants', quantity: 1, size: 'L', seller_id: sellerUser.id, price: 49.99 },
@@ -102,6 +103,9 @@ describe('Orders', () => {
 
     // amount with currency
     expect(screen.getByText('$149.99')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Order ID:\s*20260921214530-ABCDEF-00000001/)
+    ).toBeInTheDocument();
 
     // select has current value
     const selects = screen.getAllByRole('combobox');

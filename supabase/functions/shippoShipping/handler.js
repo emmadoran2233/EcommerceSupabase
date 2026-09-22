@@ -217,7 +217,7 @@ export const createShippoHandler = ({
           rate: rateId,
           label_file_type: "PDF",
           async: false,
-          metadata: `order:${orderId};seller:${auth.user.id}`.slice(0, 100),
+          metadata: `order:${order.order_number || orderId};seller:${auth.user.id}`.slice(0, 100),
         },
       });
 

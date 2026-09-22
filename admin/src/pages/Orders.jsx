@@ -63,7 +63,8 @@ const inputClass = "border border-gray-300 px-3 py-2 text-sm outline-none focus:
 const labelClass = "text-xs font-semibold text-gray-700";
 const helperClass = "text-[11px] leading-4 text-gray-500";
 
-const getOrderDisplayId = (order) => order.order_id || order.id;
+const getOrderDisplayId = (order) =>
+  order.order_number || order.order_id || order.id;
 
 const formatAddressName = (address = {}) =>
   [address.firstName, address.lastName].filter(Boolean).join(" ");
