@@ -5,8 +5,10 @@ export const buildOrderPayload = ({
   deliveryFee,
   paymentMethod,
   userId,
+  checkoutRequestId,
   now = new Date(),
 }) => ({
+  checkout_request_id: checkoutRequestId,
   address,
   items,
   amount: amount + deliveryFee,

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "test": "node --test src/domain/**/*.test.js src/application/**/*.test.js src/infrastructure/**/*.test.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -34,6 +35,7 @@
     "eslint-plugin-react-refresh": "^0.4.9",
     "postcss": "^8.4.41",
     "tailwindcss": "^3.4.10",
-    "vite": "^6.4.1"
+    "vite": "^6.4.1",
+    "vitest": "^3.2.7"
   }
 }

@@ -66,6 +66,12 @@ verify_jwt = true
 import_map = "./functions/sendWelcomeEmail/deno.json"
 entrypoint = "./functions/sendWelcomeEmail/index.ts"
 
+[functions.shippoShipping]
+enabled = true
+verify_jwt = true
+import_map = "./functions/shippoShipping/deno.json"
+entrypoint = "./functions/shippoShipping/index.ts"
+
 [functions.extendDepositHold]
 enabled = true
 verify_jwt = true

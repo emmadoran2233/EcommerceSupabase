@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { hydrateOrderWithItems } from "./orderItems.js";
 
 export type SupabaseClient = ReturnType<typeof createClient>;
 
@@ -452,11 +453,15 @@ export const sendOrderEmails = async ({
     throw new Error(error?.message || "Order not found");
   }
 
-  const items = Array.isArray(order.items) ? (order.items as OrderItem[]) : [];
+  const hydratedOrder = await hydrateOrderWithItems(supabase, order);
+  const items = Array.isArray(hydratedOrder?.items)
+    ? (hydratedOrder.items as OrderItem[])
+    : [];
   const address = (order.address || {}) as OrderAddress;
   const currency = String(order.charge_currency || order.deposit_currency || "USD").toUpperCase();
   const siteUrl = Deno.env.get("SITE_URL") || Deno.env.get("FRONTEND_URL") || "https://www.reshareloop.com";
   const orderUrl = `${siteUrl.replace(/\/$/, "")}/orders`;
+  const orderNumber = order.order_number || order.id;
   const buyerEmail =
     address.email || (await getUserEmail(supabase, order.buyer_id || order.user_id));
   const results: unknown[] = [];
@@ -465,10 +470,10 @@ export const sendOrderEmails = async ({
     const isStatusUpdate = eventType === "order_status_updated";
     const isCancellation = eventType === "order_cancelled";
     const buyerSubject = isStatusUpdate
-      ? `Your ReShareLoop order #${order.id} is ${status || order.status}`
+      ? `Your ReShareLoop order #${orderNumber} is ${status || order.status}`
       : isCancellation
-        ? `Your ReShareLoop order #${order.id} has been cancelled`
-        : `Your ReShareLoop order #${order.id} is confirmed`;
+        ? `Your ReShareLoop order #${orderNumber} has been cancelled`
+        : `Your ReShareLoop order #${orderNumber} is confirmed`;
     const buyerText = [
       `Hi ${fullName(address)},`,
       "",
@@ -528,7 +533,7 @@ export const sendOrderEmails = async ({
           ? `A ${typeLabel} order has been cancelled on ReShareLoop.`
           : `You have a new ${typeLabel} on ReShareLoop.`,
         "",
-        `Order #${order.id}`,
+        `Order #${orderNumber}`,
         `Buyer: ${fullName(address)}`,
         ...buyerLines,
         "",
@@ -543,7 +548,7 @@ export const sendOrderEmails = async ({
             ? `A ${escapeHtml(typeLabel)} order has been cancelled on ReShareLoop.`
             : `You have a new ${escapeHtml(typeLabel)} on ReShareLoop.`
         }</p>
-        <p><strong>Order #${escapeHtml(order.id)}</strong></p>
+        <p><strong>Order #${escapeHtml(orderNumber)}</strong></p>
         <p><strong>Buyer:</strong> ${escapeHtml(fullName(address))}<br>${buyerLines
           .map(escapeHtml)
           .join("<br>")}</p>
@@ -555,8 +560,8 @@ export const sendOrderEmails = async ({
         await sendEmail(supabase, orderId, {
           to: sellerEmail,
           subject: isCancellation
-            ? `Cancelled ${typeLabel} on ReShareLoop: order #${order.id}`
-            : `New ${typeLabel} on ReShareLoop: order #${order.id}`,
+            ? `Cancelled ${typeLabel} on ReShareLoop: order #${orderNumber}`
+            : `New ${typeLabel} on ReShareLoop: order #${orderNumber}`,
           html: sellerHtml,
           text: sellerText,
           eventType,

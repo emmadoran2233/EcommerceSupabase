@@ -9,3 +9,5 @@ backend/node_modules/
 dist/
 build/
 supabase/functions/.env
+supabase/.temp/linked-project.json
+/backups/

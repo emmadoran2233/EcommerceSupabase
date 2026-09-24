@@ -1,4 +1,4 @@
-import test from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { buildOrderPayload } from "./buildOrderPayload.js";
 
@@ -12,10 +12,12 @@ test("builds the current persisted order contract", () => {
     deliveryFee: 10,
     paymentMethod: "stripe",
     userId: "buyer-1",
+    checkoutRequestId: "checkout-1",
     now: new Date("2026-08-31T12:00:00.000Z"),
   });
 
   assert.deepEqual(payload, {
+    checkout_request_id: "checkout-1",
     address,
     items,
     amount: 60,

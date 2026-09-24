@@ -7,11 +7,11 @@ import RentCalendar from "../components/RentCalendar";
 import { supabase } from "../supabaseClient";
 import CustomizationModal from "../components/CustomizationModal";
 import { toast } from "react-toastify";
+import { createCustomizationSnapshot } from "../domain/customizations/createCustomizationSnapshot";
 
 const Product = () => {
   const { productId } = useParams();
-  const { products, currency, addToCart, user, userId } =
-    useContext(ShopContext);
+  const { products, currency, addToCart, user } = useContext(ShopContext);
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState("");
   const [size, setSize] = useState("");
@@ -25,8 +25,6 @@ const Product = () => {
   const [editText, setEditText] = useState("");
   const [showCustomizationModal, setShowCustomizationModal] = useState(false);
   const [savedCustomization, setSavedCustomization] = useState(null);
-  const [savingCustomization, setSavingCustomization] = useState(false);
-  const [loadingCustomization, setLoadingCustomization] = useState(false);
 
   const fetchProductData = async () => {
     products.map((item) => {
@@ -66,109 +64,18 @@ const Product = () => {
     setSavedCustomization(null);
   }, [productId]);
 
-  useEffect(() => {
-    if (!productData?.is_customizable || !userId) {
-      setSavedCustomization(null);
-      return;
-    }
-
-    const fetchCustomization = async () => {
-      setLoadingCustomization(true);
-      try {
-        const { data, error } = await supabase
-          .from("customizations")
-          .select(
-            "id, text_line_1, text_line_2, text_line_3, font, color, created_at"
-          )
-          .eq("product_id", productId)
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (error) throw error;
-
-        if (data) {
-          setSavedCustomization({
-            id: data.id,
-            lines: [
-              data.text_line_1 || "",
-              data.text_line_2 || "",
-              data.text_line_3 || "",
-            ],
-            color: data.color || "#111827",
-          });
-        } else {
-          setSavedCustomization(null);
-        }
-      } catch (error) {
-        console.warn("Customization fetch failed:", error.message);
-      } finally {
-        setLoadingCustomization(false);
-      }
-    };
-
-    fetchCustomization();
-  }, [productData?.is_customizable, productId, userId]);
-
-  const handleSaveCustomization = async (payload) => {
-    const trimmed = payload.lines.map((line) => line.trim()).slice(0, 3);
-    const hasContent = trimmed.some((line) => line.length > 0);
-
-    if (!hasContent) {
-      toast.error("Enter at least one custom line.");
-      return;
-    }
-
-    const localRecord = {
-      id:
-        payload.id ||
-        (crypto?.randomUUID ? crypto.randomUUID() : `custom-${Date.now()}`),
-      lines: trimmed,
-      color: payload.color,
-    };
-
-    if (!userId) {
-      setSavedCustomization(localRecord);
-      setShowCustomizationModal(false);
-      toast.success("Customization saved!");
-      return;
-    }
-
-    setSavingCustomization(true);
+  const handleSaveCustomization = (payload) => {
     try {
-      const { data, error } = await supabase
-        .from("customizations")
-        .insert([
-          {
-            product_id: productId,
-            user_id: userId,
-            text_line_1: trimmed[0] || null,
-            text_line_2: trimmed[1] || null,
-            text_line_3: trimmed[2] || null,
-            color: payload.color,
-          },
-        ])
-        .select()
-        .maybeSingle();
-
-      if (error) throw error;
-
-      setSavedCustomization({
-        ...localRecord,
-        id: data?.id || localRecord.id,
+      const snapshot = createCustomizationSnapshot({
+        ...payload,
+        id: payload.id || savedCustomization?.id,
       });
-      toast.success("Customization saved!");
-    } catch (error) {
-      console.error("Save customization failed:", error);
-      toast.warn(
-        error.message ||
-          "Unable to sync customization, but it will still be used for this order."
-      );
-      setSavedCustomization({ ...localRecord, unsynced: true });
-    } finally {
-      setSavingCustomization(false);
+
+      setSavedCustomization(snapshot);
       setShowCustomizationModal(false);
+      toast.success("Customization ready for cart!");
+    } catch (error) {
+      toast.error(error.message);
     }
   };
 
@@ -320,9 +227,6 @@ const Product = () => {
                   >
                     {savedCustomization ? "Edit Customization" : "Customize"}
                   </button>
-                  {loadingCustomization && (
-                    <p className="text-xs text-gray-500">Loading customization…</p>
-                  )}
                 </div>
                 {savedCustomization ? (
                   <div className="text-xs sm:text-sm text-gray-600 bg-gray-50 border rounded p-3">
@@ -484,7 +388,6 @@ const Product = () => {
         onClose={() => setShowCustomizationModal(false)}
         onSave={handleSaveCustomization}
         initialValue={savedCustomization}
-        saving={savingCustomization}
       />
     </>
   ) : (

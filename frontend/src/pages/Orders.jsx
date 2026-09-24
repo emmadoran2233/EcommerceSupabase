@@ -2,6 +2,9 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { ShopContext } from "../context/ShopContext";
 import Title from "../components/Title";
 import { supabase } from "../supabaseClient";
+import { createOrderRepository } from "../infrastructure/orders/orderRepository";
+
+const orderRepository = createOrderRepository(supabase);
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20];
 const ORDER_STATUS_OPTIONS = [
@@ -34,76 +37,28 @@ const Orders = () => {
 
     try {
       setLoading(true);
-      const baseSelect =
-        "id, items, status, payment, paymentmethod, date, created_at, buyer_id";
-      const ownerFilter = `buyer_id.eq.${user.id},user_id.eq.${user.id}`;
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
       const trimmedOrderId = orderIdSearch.trim();
-      const searchedOrderId = trimmedOrderId ? Number(trimmedOrderId) : null;
 
-      if (trimmedOrderId && !Number.isInteger(searchedOrderId)) {
-        setOrderData([]);
-        setTotalOrders(0);
-        return;
-      }
-
-      // Apply filters before range so Supabase counts and returns the filtered page.
-      const applyFilters = (query) => {
-        let nextQuery = query.or(ownerFilter);
-
-        if (statusFilter) {
-          nextQuery = nextQuery.eq("status", statusFilter);
-        }
-        if (searchedOrderId) {
-          nextQuery = nextQuery.eq("id", searchedOrderId);
-        }
-
-        return nextQuery
-          .order("created_at", { ascending: false })
-          .range(from, to);
-      };
-
-      let {
-        data,
-        error,
-        count,
-      } = await applyFilters(
-        supabase
-          .from("orders")
-          .select(`${baseSelect}, shipping_tracking_number, shipping_tracking_url`, {
-            count: "exact",
-          })
-      );
-
-      if (error && error.message?.includes("shipping_tracking")) {
-        const fallback = await applyFilters(
-          supabase.from("orders").select(baseSelect, { count: "exact" })
-        );
-
-        data = fallback.data;
-        error = fallback.error;
-        count = fallback.count;
-      }
-
-      if (error) {
-        console.error("❌ Supabase fetch error:", error);
-        return;
-      }
-
-      const formattedOrders = (data || []).map((order) => ({
+      const result = await orderRepository.findBuyerOrders({
+        userId: user.id,
+        page,
+        pageSize,
+        status: statusFilter,
+        orderId: trimmedOrderId || null,
+      });
+      const formattedOrders = result.orders.map((order) => ({
         id: order.id,
-        status: order.status,
+        orderNumber: order.order_number || String(order.id),
+        status: order.displayStatus || order.status,
         payment: order.payment,
         paymentmethod: order.paymentmethod,
         date: order.date || order.created_at,
         items: order.items || [],
-        shippingTrackingNumber: order.shipping_tracking_number || "",
-        shippingTrackingUrl: order.shipping_tracking_url || "",
+        shipments: order.fulfillments || [],
       }));
 
       setOrderData(formattedOrders);
-      setTotalOrders(count || 0);
+      setTotalOrders(result.count);
     } catch (error) {
       console.error("🔥 loadOrderData error:", error);
     } finally {
@@ -130,10 +85,7 @@ const Orders = () => {
   const hasFilters = Boolean(statusFilter || orderIdSearch.trim());
   const shouldShowPagination = totalOrders > pageSize;
 
-  // ✅ Reorder feature
   const handleReorder = async (orderId) => {
-    console.log("🧠 Sending reorder request for order_id:", orderId);
-
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reorder`,
@@ -144,7 +96,6 @@ const Orders = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            user_id: userId,
             order_id: orderId,
           }),
         }
@@ -186,7 +137,7 @@ const Orders = () => {
             type="search"
             value={orderIdSearch}
             onChange={(event) => setOrderIdSearch(event.target.value)}
-            placeholder="Search order #"
+            placeholder="20260921214530-ABCDEF-00000123"
             className="border border-gray-300 px-3 py-2 outline-none focus:border-black"
           />
         </label>
@@ -248,7 +199,7 @@ const Orders = () => {
           {orderData.map((order) => (
             <div key={order.id} className="py-4 border-t border-b text-gray-700">
               <p className="font-semibold mb-2">
-                Order #{order.id}{" "}
+                Order #{order.orderNumber}{" "}
                 <span className="text-sm text-gray-500 ml-2">
                   {new Date(order.date).toLocaleDateString()}
                 </span>
@@ -298,26 +249,63 @@ const Orders = () => {
                 </button>
               </div>
 
-              {(order.shippingTrackingNumber || order.shippingTrackingUrl) && (
-                <div className="mt-3 text-sm text-gray-600">
-                  {order.shippingTrackingNumber && (
-                    <p>
-                      Tracking #:{" "}
-                      <span className="font-medium text-black">
-                        {order.shippingTrackingNumber}
-                      </span>
-                    </p>
-                  )}
-                  {order.shippingTrackingUrl && (
-                    <a
-                      href={order.shippingTrackingUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-blue-600 underline"
-                    >
-                      Track shipment
-                    </a>
-                  )}
+              {order.shipments.length > 0 && (
+                <div className="mt-4 border-t border-gray-200 pt-3">
+                  <p className="mb-2 text-sm font-semibold text-black">
+                    Shipment progress
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {order.shipments.map((shipment, index) => (
+                      <div
+                        key={shipment.sellerId || `legacy-${index}`}
+                        className="border border-gray-200 bg-white p-3 text-sm"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-black">
+                              Shipment {index + 1} · {shipment.sellerName}
+                            </p>
+                            {shipment.items.length > 0 && (
+                              <p className="mt-1 text-xs text-gray-500">
+                                {shipment.items
+                                  .map((item) => `${item.name} × ${item.quantity}`)
+                                  .join(" · ")}
+                              </p>
+                            )}
+                          </div>
+                          <span className="bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+                            {shipment.statusLabel}
+                          </span>
+                        </div>
+
+                        {(shipment.carrier || shipment.service) && (
+                          <p className="mt-2 text-gray-600">
+                            {[shipment.carrier, shipment.service]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                        )}
+                        {shipment.trackingNumber && (
+                          <p className="mt-2 text-gray-600">
+                            Tracking #:{" "}
+                            <span className="font-medium text-black">
+                              {shipment.trackingNumber}
+                            </span>
+                          </p>
+                        )}
+                        {shipment.trackingUrl && (
+                          <a
+                            href={shipment.trackingUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-1 inline-block text-blue-600 underline"
+                          >
+                            Track this shipment
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
